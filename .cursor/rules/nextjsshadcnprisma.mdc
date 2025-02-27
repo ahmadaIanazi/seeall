@@ -1,0 +1,8 @@
+---
+description: To create components and fix code without adding new UI components from Shadcn
+globs: 
+---
+
+# UI Components
+
+- Dont create Shadcn UI components in /components/ui and simple use them directly in the code, and leave adding the Shadcn components for the user.
