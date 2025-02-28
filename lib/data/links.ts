@@ -1,26 +1,39 @@
 import { db } from "@/lib/db";
 
 export async function getUserLinks(userId: string) {
-  return db.link.findMany({
-    where: { userId },
-    orderBy: { order: "asc" },
-  });
+  try {
+    return await db.link.findMany({
+      where: { userId },
+      orderBy: { order: "asc" },
+    });
+  } catch (error) {
+    console.error("Error fetching user links:", error);
+    return [];
+  }
 }
 
 export async function createLink({ title, url, userId }: { title: string; url: string; userId: string }) {
-  const lastLink = await db.link.findFirst({
-    where: { userId },
-    orderBy: { order: "desc" },
-  });
+  try {
+    // Get the current highest order
+    const lastLink = await db.link.findFirst({
+      where: { userId },
+      orderBy: { order: "desc" },
+    });
 
-  return db.link.create({
-    data: {
-      title,
-      url,
-      userId,
-      order: lastLink ? lastLink.order + 1 : 0,
-    },
-  });
+    const order = lastLink ? lastLink.order + 1 : 0;
+
+    return await db.link.create({
+      data: {
+        title,
+        url,
+        userId,
+        order,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating link:", error);
+    throw new Error("Failed to create link");
+  }
 }
 
 export async function deleteLink(id: string, userId: string) {

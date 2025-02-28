@@ -1,0 +1,196 @@
+# Working with an Existing Project.
+Follow these steps to add generate cursor rules to work with an existing project.
+
+1. Open Cursor Composer and add all the project files.
+2. Add all project files to the Cursor Composer. To all cursor to read and analyze the code and folder structure.
+3. Copy the following Prompt and paste it into the Cursor Composer.
+4. Submit the prompt to make cursor composer to generate the rules dynamically based on your existing project.
+5. Copy the results and paste it into the .cursorrules file. (If it doesn't exist, create it.)
+
+Note: If Cursor composer did not complete all the guidelines, you can simply write a prompt "Continue the rules" and submit it again.
+
+# Prompt
+'''
+[ DO NOT WRITE CODE, ONLY WRITE THE RULES BASED ON THE CODE AND PROJECT FOLDERS].
+
+Follow the following steps to generate the rules:
+
+### General Guidelines
+1. Determine the Language and Framework
+
+- Analyze the current codebase and configuration files (e.g., package.json, pyproject.toml, Cargo.toml, CMakeLists.txt) to identify the language, frameworks, and libraries being used.
+- If these details are not explicitly defined, suggest them based on the project's structure and best practices for similar projects.
+- (Fill in the detected programming language and frameworks here)
+
+2. File and Folder Structure
+
+- Analyze the existing code to determine the current file and folder organization.
+- If a structure is not clearly defined, suggest one based on best practices for the identified language or framework.
+(Write the structure with this formatting:
+
+'''
+Project/
+├── Example Folder/
+├── Example File.extension
+└── ...
+'''
+)
+
+3. Code Style and Structure
+
+- Analyze the project's existing code style and structure.
+- If inconsistencies or gaps exist, suggest best practices for modularization, naming conventions, and organization based on the identified tech stack.
+- Include concise examples of proper structuring if applicable.
+- (Fill in language-specific guidelines here)
+
+4. Syntax and Formatting
+
+- Analyze the code for adherence to standard syntax and formatting rules.
+- If formatting tools are not configured, suggest appropriate ones for the language (e.g., Prettier for JavaScript, Black for Python, Clippy for Rust).
+- (Fill in relevant formatting and linting tools for the project here)
+
+5. Tech Stack and Dependencies
+
+- Analyze the configuration or manifest files to list the detected tech stack and dependencies.
+- If no clear stack is defined, suggest tools, libraries, and dependencies based on best practices for the project's domain.
+- (Fill in the detected tech stack and suggested tools/dependencies here)
+
+6. Performance Optimization
+
+- Analyze the code for potential performance bottlenecks.
+- Suggest optimization strategies relevant to the identified tech stack, such as caching techniques, lazy loading, or efficient memory management.
+- (Fill in optimization strategies here)
+
+7. Testing
+
+- Analyze the project for existing test suites, tools, or frameworks.
+- If missing, suggest suitable testing strategies for unit tests, integration tests, and end-to-end tests based on the tech stack.
+- (Fill in testing strategies here)
+
+8. Error Handling
+
+- Analyze the code for error handling mechanisms and logging practices.
+- If insufficient, suggest strategies for robust error handling, runtime validation, and edge case management.
+- (Fill in error-handling guidelines here)
+
+9. Security
+
+- Analyze the code for security vulnerabilities and mechanisms like input sanitization, authentication, and encryption.
+- If absent, suggest security best practices tailored to the tech stack.
+- (Fill in security guidelines here)
+
+10. Integration
+
+- Analyze the codebase to identify integrations with external APIs or services.
+- If integrations are absent or incomplete, suggest best practices for managing them effectively.
+- (Fill in integration management practices here)
+
+11. Deployment
+
+- Analyze the project setup to identify deployment strategies.
+- If no deployment processes exist, suggest suitable strategies based on the identified tech stack and project requirements.
+- (Fill in deployment strategies here)
+
+12. Documentation
+
+- Analyze the project for existing documentation, such as a README file or API docs.
+- If missing or incomplete, propose a comprehensive documentation structure for code, APIs, and usage.
+- (Fill in documentation structure and guidelines here)
+
+### After Identifying the Tech Stack or Library
+For each identified language, framework, or library, the AI should:
+
+1. Analyze Existing Patterns:
+
+- Examine the majority of the code to detect how the language, framework, or library is being used.
+- Identify coding conventions, patterns, and stylistic decisions present in the current codebase.
+
+2. Determine Current Practices:
+
+- Based on the analysis, describe the key practices observed in the code.
+- If clear practices are not detected or are inconsistent, propose guidelines based on industry best practices for the specific stack or library.
+
+3. Provide Bullet Point Guidelines:
+
+- Write concise, actionable guidelines for continuing or improving the usage of the identified stack or library.
+- Include examples where appropriate, formatted in an easy-to-read structure.
+
+### Examples of Language Guidelines
+
+*JavaScript/TypeScript:*
+Analyze the majority of the code to detect coding patterns and style.
+Write instructions like:
+
+*JavaScript/TypeScript:*
+- Use the "function" keyword for pure functions; avoid arrow functions for top-level declarations.
+- Omit semicolons unless necessary for disambiguation.
+- Use TypeScript for all files. Prefer interfaces over types. Avoid enums; use maps instead.
+- Use strict mode in TypeScript to enforce better type safety.
+- Structure files using named exports for better maintainability.
+
+*Python:*
+If Python is detected, analyze existing code to understand whether it follows PEP8 or another custom convention.
+Write instructions like:
+
+'''
+[If Python:]
+- Use PEP8 as the baseline for formatting. Configure tools like `black` or `flake8`.
+- Follow functional programming patterns. Avoid global variables.
+- Write modular, reusable code; separate concerns into distinct files or classes.
+'''
+
+*Rust:*
+Analyze existing Rust code to identify patterns.
+Write instructions like:
+
+'''
+[If Rust:]
+- Use `clippy` for linting and formatting.
+- Write idiomatic Rust code with explicit error handling using `Result` and `Option`.
+- Use Cargo workspaces for modular projects.
+'''
+
+### Examples of Library/Framework Guidelines
+
+*React/Next.js*
+Analyze the usage of React and Next.js in the codebase to detect patterns like functional components or server-side rendering.
+Write instructions like:
+
+'''
+[If React/Next.js:]
+- Use functional components exclusively; avoid class components.
+- Prefer TypeScript interfaces for props over plain objects.
+- Use declarative JSX. Write reusable and composable components.
+- Utilize Tailwind CSS for styling, and ensure responsive design.
+- For forms, use libraries like `react-hook-form` and validation with `Zod`.
+- For navigation, use Next.js' built-in `Link` and dynamic routes.
+'''
+
+*Express.js*
+Analyze the structure of middleware, routes, and error handling in the codebase.
+Write instructions like:
+
+'''
+[If Express.js:]
+- Use `async/await` for all asynchronous operations.
+- Separate route definitions, middleware, and controllers into distinct files for modularity.
+- Use a centralized error-handling middleware.
+'''
+
+*Tailwind CSS*
+Analyze the current use of utility classes and custom styles.
+Write instructions like:
+
+'''
+[If Tailwind CSS:]
+- Use consistent utility-first class names in JSX/HTML.
+- Configure a custom theme in `tailwind.config.js` for brand consistency.
+- Use `@apply` sparingly for repetitive styles but favor utility classes otherwise.
+'''
+
+### Fallback Strategy for Missing Patterns
+If the project lacks established conventions or practices, propose best practices tailored to the identified tech stack or library:
+Reference established guidelines like official documentation or widely-adopted community standards.
+Include a rationale for each suggested practice.
+
+'''

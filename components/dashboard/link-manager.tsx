@@ -1,25 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Link } from "@prisma/client";
 import { GripVertical, Trash2 } from "lucide-react";
-import { CSS } from "@dnd-kit/utilities";
-import { LinkList } from "@/components/links/link-list";
+
+// Define the Link type
+interface Link {
+  id: string;
+  title: string;
+  url: string;
+  order: number;
+}
 
 interface LinkManagerProps {
   initialLinks: Link[];
   userId: string;
 }
 
-function SortableLink({ link, onDelete }: { link: Link; onDelete: (id: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: link.id,
-  });
+// SortableItem component
+function SortableItem({ id, title, url, onDelete }: { id: string; title: string; url: string; onDelete: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -32,18 +37,19 @@ function SortableLink({ link, onDelete }: { link: Link; onDelete: (id: string) =
         <GripVertical className='h-5 w-5 text-muted-foreground' />
       </div>
       <div className='flex-1 min-w-0'>
-        <p className='font-medium truncate'>{link.title}</p>
-        <p className='text-sm text-muted-foreground truncate'>{link.url}</p>
+        <p className='font-medium truncate'>{title}</p>
+        <p className='text-sm text-muted-foreground truncate'>{url}</p>
       </div>
-      <Button variant='ghost' size='icon' onClick={() => onDelete(link.id)}>
+      <Button variant='ghost' size='icon' onClick={() => onDelete(id)}>
         <Trash2 className='h-4 w-4' />
       </Button>
     </div>
   );
 }
 
+// LinkManager component
 export function LinkManager({ initialLinks, userId }: LinkManagerProps) {
-  const [links, setLinks] = useState(initialLinks);
+  const [links, setLinks] = useState<Link[]>(initialLinks);
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
@@ -55,50 +61,61 @@ export function LinkManager({ initialLinks, userId }: LinkManagerProps) {
     })
   );
 
+  // Handle adding a new link
   async function onAddLink(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
 
-    const response = await fetch("/api/links", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        url,
-        userId,
-      }),
-    });
+    try {
+      const response = await fetch("/api/links", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          url,
+          userId,
+        }),
+      });
 
-    if (!response?.ok) {
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Something went wrong");
+      }
+
+      const newLink = await response.json();
+      setLinks((prevLinks) => [...prevLinks, newLink]);
+      setTitle("");
+      setUrl("");
+      toast.success("Link added successfully");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
       setIsLoading(false);
-      const error = await response.json();
-      return toast.error(error.message || "Something went wrong");
     }
-
-    const newLink = await response.json();
-    setLinks([...links, newLink]);
-    setIsLoading(false);
-    setTitle("");
-    setUrl("");
-    toast.success("Link added successfully");
   }
 
+  // Handle deleting a link
   async function onDeleteLink(id: string) {
-    const response = await fetch(`/api/links/${id}`, {
-      method: "DELETE",
-    });
+    try {
+      const response = await fetch(`/api/links/${id}`, {
+        method: "DELETE",
+      });
 
-    if (!response?.ok) {
-      const error = await response.json();
-      return toast.error(error.message || "Something went wrong");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Something went wrong");
+      }
+
+      setLinks((prevLinks) => prevLinks.filter((link) => link.id !== id));
+      toast.success("Link deleted successfully");
+    } catch (error: any) {
+      toast.error(error.message);
     }
-
-    setLinks(links.filter((link) => link.id !== id));
-    toast.success("Link deleted successfully");
   }
 
+  // Handle drag end event
   async function handleDragEnd(event: any) {
     const { active, over } = event;
 
@@ -116,9 +133,10 @@ export function LinkManager({ initialLinks, userId }: LinkManagerProps) {
         // Update the order in the database
         fetch("/api/links/reorder", {
           method: "PUT",
-          body: JSON.stringify({
-            links: updatedLinks,
-          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedLinks),
         }).catch((error) => {
           console.error("Failed to update link order:", error);
           toast.error("Failed to update link order");
@@ -144,17 +162,10 @@ export function LinkManager({ initialLinks, userId }: LinkManagerProps) {
       </form>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={links} strategy={verticalListSortingStrategy}>
-          <LinkList
-            links={links}
-            isEditing={true}
-            onDelete={onDeleteLink}
-            dragHandleProps={
-              <div className='cursor-move'>
-                <GripVertical className='h-5 w-5 text-muted-foreground' />
-              </div>
-            }
-          />
+        <SortableContext items={links.map((link) => link.id)} strategy={verticalListSortingStrategy}>
+          {links.map((link) => (
+            <SortableItem key={link.id} id={link.id} title={link.title} url={link.url} onDelete={onDeleteLink} />
+          ))}
         </SortableContext>
       </DndContext>
     </div>
