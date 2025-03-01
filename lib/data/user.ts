@@ -6,13 +6,16 @@ export async function getUserByUsername(username: string) {
     const user = await db.user.findUnique({
       where: { username },
       include: {
+        links: {
+          orderBy: { order: "asc" },
+        },
         socialLinks: true,
-        links: true,
       },
     });
+
     return user;
   } catch (error) {
-    console.error("Error fetching user:", error);
+    console.error("Failed to fetch user:", error);
     return null;
   }
 }

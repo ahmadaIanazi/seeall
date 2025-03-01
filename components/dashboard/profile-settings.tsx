@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { PlusCircle, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDashboardStore } from "@/lib/store/dashboard";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface ProfileSettingsProps {
   initialData: {
@@ -29,94 +31,67 @@ const SOCIAL_PLATFORMS = {
 };
 
 export function ProfileSettings({ initialData }: ProfileSettingsProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [displayName, setDisplayName] = useState(initialData.displayName || "");
-  const [bio, setBio] = useState(initialData.bio || "");
-  const [socialLinks, setSocialLinks] = useState(initialData.socialLinks);
+  const { setProfile, setSocialLinks } = useDashboardStore();
+  const [displayName, setDisplayName] = useState(initialData.displayName);
+  const [bio, setBio] = useState(initialData.bio);
+  const [socialLinks, setSocialLinksLocal] = useState(initialData.socialLinks);
   const [newPlatform, setNewPlatform] = useState<string | null>(null);
   const [newUrl, setNewUrl] = useState("");
+  const [showSocialForm, setShowSocialForm] = useState(false);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setIsLoading(true);
+  // Initialize store with initial data
+  useEffect(() => {
+    setProfile({ displayName: initialData.displayName, bio: initialData.bio });
+    setSocialLinks(initialData.socialLinks);
+  }, [initialData, setProfile, setSocialLinks]);
 
-    const response = await fetch("/api/user/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        displayName,
-        bio,
-        socialLinks,
-      }),
-    });
+  // Update store when local state changes
+  useEffect(() => {
+    setProfile({ displayName, bio });
+  }, [displayName, bio, setProfile]);
 
-    setIsLoading(false);
-
-    if (!response?.ok) {
-      const error = await response.json();
-      return toast.error(error.message || "Something went wrong");
-    }
-
-    toast.success("Profile updated successfully");
-  }
+  useEffect(() => {
+    setSocialLinks(socialLinks);
+  }, [socialLinks, setSocialLinks]);
 
   function addSocialLink() {
     if (!newPlatform || !newUrl) return;
-
-    setSocialLinks([...socialLinks, { id: Date.now().toString(), platform: newPlatform, url: newUrl }]);
+    setSocialLinksLocal([...socialLinks, { id: Date.now().toString(), platform: newPlatform, url: newUrl }]);
     setNewPlatform(null);
     setNewUrl("");
   }
 
   function removeSocialLink(id: string) {
-    setSocialLinks(socialLinks.filter((link) => link.id !== id));
+    setSocialLinksLocal(socialLinks.filter((link) => link.id !== id));
   }
 
   return (
-    <form onSubmit={onSubmit} className='space-y-6'>
+    <div className='space-y-6'>
       <div className='space-y-4'>
         <div>
-          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder='Display Name (optional)' disabled={isLoading} />
+          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder='Display Name (optional)' />
           <p className='text-sm text-muted-foreground mt-1'>This will be shown instead of your username</p>
         </div>
 
         <div>
-          <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Bio (optional)' disabled={isLoading} rows={3} />
+          <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Bio (optional)' rows={3} />
         </div>
 
+        {/* Social Links Section */}
         <div className='space-y-2'>
-          <div className='flex gap-2'>
-            <Select value={newPlatform || ""} onValueChange={setNewPlatform}>
-              <SelectTrigger className='w-[180px]'>
-                <SelectValue placeholder='Select Platform' />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(SOCIAL_PLATFORMS).map(([value, { label }]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              value={newUrl}
-              onChange={(e) => setNewUrl(e.target.value)}
-              placeholder={newPlatform ? SOCIAL_PLATFORMS[newPlatform as keyof typeof SOCIAL_PLATFORMS]?.placeholder : "URL"}
-              type='url'
-              className='flex-1'
-            />
-            <Button type='button' variant='outline' onClick={addSocialLink} disabled={!newPlatform || !newUrl}>
+          <div className='flex items-center justify-between'>
+            <h3 className='text-sm font-medium'>Social Links</h3>
+            <Button type='button' variant='ghost' size='sm' onClick={() => setShowSocialForm(true)}>
               <PlusCircle className='h-4 w-4' />
             </Button>
           </div>
 
-          <div className='space-y-2'>
+          <div className='flex flex-wrap gap-2'>
             {socialLinks.map((link) => (
-              <div key={link.id} className='flex items-center gap-2'>
-                <div className='bg-muted rounded px-2 py-1 text-sm'>{SOCIAL_PLATFORMS[link.platform as keyof typeof SOCIAL_PLATFORMS]?.label}</div>
-                <div className='flex-1 truncate text-sm text-muted-foreground'>{link.url}</div>
-                <Button type='button' variant='ghost' size='icon' onClick={() => removeSocialLink(link.id)}>
-                  <X className='h-4 w-4' />
+              <div key={link.id} className='flex items-center gap-2 bg-muted rounded-lg px-3 py-2'>
+                <span className='text-sm'>{SOCIAL_PLATFORMS[link.platform].label}</span>
+                <Button type='button' variant='ghost' size='icon' className='h-4 w-4' onClick={() => removeSocialLink(link.id)}>
+                  <X className='h-3 w-3' />
                 </Button>
               </div>
             ))}
@@ -124,9 +99,41 @@ export function ProfileSettings({ initialData }: ProfileSettingsProps) {
         </div>
       </div>
 
-      <Button type='submit' disabled={isLoading} className='w-full'>
-        {isLoading ? "Saving..." : "Save Changes"}
-      </Button>
-    </form>
+      <Sheet open={showSocialForm} onOpenChange={setShowSocialForm}>
+        <SheetContent side='bottom'>
+          <SheetHeader>
+            <SheetTitle>Add Social Link</SheetTitle>
+          </SheetHeader>
+          <div className='p-6 space-y-4'>
+            <div className='flex flex-col gap-4'>
+              <Select value={newPlatform || ""} onValueChange={(value) => setNewPlatform(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder='Select platform' />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SOCIAL_PLATFORMS).map(([key, { label }]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder={newPlatform ? SOCIAL_PLATFORMS[newPlatform].placeholder : "Enter URL"} />
+
+              <Button
+                onClick={() => {
+                  addSocialLink();
+                  setShowSocialForm(false);
+                }}
+                disabled={!newPlatform || !newUrl}
+              >
+                Add Social Link
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }

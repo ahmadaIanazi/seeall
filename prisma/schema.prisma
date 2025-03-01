@@ -9,21 +9,28 @@ generator client {
 }
 
 model User {
-  id            String      @id @default(cuid())
-  username      String      @unique
-  password      String
+  id            String       @id @default(cuid())
+  username      String       @unique
   displayName   String?
-  bio           String?     @db.Text
+  bio           String?
+  email         String       @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
   links         Link[]
   socialLinks   SocialLink[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model Link {
   id          String    @id @default(cuid())
+  type        String    @default("link") // "link", "image", "map", "header"
   title       String
-  url         String
+  url         String?   // Optional now since headers don't need URLs
+  image       String?   // For image links
+  description String?   // For additional context
+  mapLocation Json?     // For storing map coordinates and info
   order       Int       @default(0)
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -34,13 +41,13 @@ model Link {
 }
 
 model SocialLink {
-  id          String    @id @default(cuid())
-  platform    String    // e.g., "twitter", "github", etc.
-  url         String
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  platform  String
+  url       String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
 } 

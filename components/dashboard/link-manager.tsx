@@ -1,19 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, Plus, Trash2, Link, MapPin, Image as ImageIcon, Heading } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { LinkTypeSelector } from "./link-type-selector";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { ImageUpload } from "@/components/ui/image-upload";
+import Image from "next/image";
+import { useDashboardStore } from "@/lib/store/dashboard";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 // Define the Link type
 interface Link {
   id: string;
+  type: string;
   title: string;
-  url: string;
+  url?: string;
+  image?: string; // Will store base64 image data
+  description?: string;
+  mapLocation?: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
   order: number;
 }
 
@@ -23,8 +39,8 @@ interface LinkManagerProps {
 }
 
 // SortableItem component
-function SortableItem({ id, title, url, onDelete }: { id: string; title: string; url: string; onDelete: (id: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+function SortableItem({ link, onDelete }: { link: Link; onDelete: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: link.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -37,22 +53,117 @@ function SortableItem({ id, title, url, onDelete }: { id: string; title: string;
         <GripVertical className='h-5 w-5 text-muted-foreground' />
       </div>
       <div className='flex-1 min-w-0'>
-        <p className='font-medium truncate'>{title}</p>
-        <p className='text-sm text-muted-foreground truncate'>{url}</p>
+        <div className='flex items-center gap-2'>
+          {getLinkIcon(link.type)}
+          <p className='font-medium truncate'>{link.title}</p>
+        </div>
+        {link.type === "image" && link.image && (
+          <div className='relative w-full h-32 mt-2'>
+            <Image src={link.image} alt={link.title} fill className='object-cover rounded-lg' />
+          </div>
+        )}
+        {link.type !== "header" && <p className='text-sm text-muted-foreground truncate'>{link.type === "map" ? "Map Location" : link.url}</p>}
       </div>
-      <Button variant='ghost' size='icon' onClick={() => onDelete(id)}>
+      <Button variant='ghost' size='icon' onClick={() => onDelete(link.id)}>
         <Trash2 className='h-4 w-4' />
       </Button>
     </div>
   );
 }
 
+// Add this helper function
+function getLinkIcon(type: string) {
+  switch (type) {
+    case "link":
+      return <Link className='h-4 w-4' />;
+    case "image":
+      return <ImageIcon className='h-4 w-4' />;
+    case "map":
+      return <MapPin className='h-4 w-4' />;
+    case "header":
+      return <Heading className='h-4 w-4' />;
+    default:
+      return <Link className='h-4 w-4' />;
+  }
+}
+
+// Add a new component for the link form
+function LinkForm({ type, onSubmit }: { type: string; onSubmit: (data: FormData) => void }) {
+  const [imageData, setImageData] = useState("");
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    if (type === "image" && imageData) {
+      formData.set("image", imageData);
+    }
+    onSubmit(formData);
+    e.currentTarget.reset(); // Reset form after submission
+    setImageData(""); // Reset image data
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className='space-y-4'>
+      {/* Common title field for all types */}
+      <div className='space-y-2'>
+        <Label htmlFor='title'>Title</Label>
+        <Input id='title' name='title' placeholder='Enter title' required />
+      </div>
+
+      {/* Type-specific fields */}
+      {type === "link" && (
+        <div className='space-y-2'>
+          <Label htmlFor='url'>URL</Label>
+          <Input id='url' name='url' type='url' placeholder='https://example.com' required />
+        </div>
+      )}
+
+      {type === "image" && (
+        <>
+          <div className='space-y-2'>
+            <Label>Image</Label>
+            <ImageUpload value={imageData} onChange={setImageData} />
+          </div>
+          <div className='space-y-2'>
+            <Label htmlFor='url'>Link URL (Optional)</Label>
+            <Input id='url' name='url' type='url' placeholder='https://example.com' />
+          </div>
+        </>
+      )}
+
+      {type === "map" && (
+        <div className='space-y-2'>
+          <Label htmlFor='address'>Location Address</Label>
+          <Input id='address' name='address' placeholder='Enter address' required />
+          {/* We can add a map picker component here later */}
+        </div>
+      )}
+
+      {type === "header" && (
+        <div className='space-y-2'>
+          <Label htmlFor='description'>Description (Optional)</Label>
+          <Textarea id='description' name='description' placeholder='Add a description' />
+        </div>
+      )}
+
+      <Button type='submit' className='w-full'>
+        Add to List
+      </Button>
+    </form>
+  );
+}
+
 // LinkManager component
 export function LinkManager({ initialLinks, userId }: LinkManagerProps) {
-  const [links, setLinks] = useState<Link[]>(initialLinks);
-  const [isLoading, setIsLoading] = useState(false);
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
+  const { links, setLinks, addLink, removeLink, reorderLinks } = useDashboardStore();
+  const [isAddingLink, setIsAddingLink] = useState(false);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  // Initialize store with initial links
+  useEffect(() => {
+    setLinks(initialLinks);
+  }, [initialLinks, setLinks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -61,113 +172,103 @@ export function LinkManager({ initialLinks, userId }: LinkManagerProps) {
     })
   );
 
-  // Handle adding a new link
-  async function onAddLink(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setIsLoading(true);
-
+  // Handle adding a link
+  function handleAddLink(formData: FormData) {
     try {
-      const response = await fetch("/api/links", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title,
-          url,
-          userId,
-        }),
+      const data = {
+        type: selectedType,
+        title: formData.get("title"),
+        userId,
+        url: formData.get("url") as string,
+        image: formData.get("image") as string,
+        description: formData.get("description") as string,
+        mapLocation: selectedType === "map" ? { address: formData.get("address") } : null,
+      };
+
+      // Add to store
+      addLink({
+        ...data,
+        id: crypto.randomUUID(),
+        order: links.length,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Something went wrong");
-      }
-
-      const newLink = await response.json();
-      setLinks((prevLinks) => [...prevLinks, newLink]);
-      setTitle("");
-      setUrl("");
-      toast.success("Link added successfully");
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setIsLoading(false);
+      setIsAddingLink(false);
+    } catch (error) {
+      toast.error("Failed to add link");
     }
   }
 
-  // Handle deleting a link
-  async function onDeleteLink(id: string) {
-    try {
-      const response = await fetch(`/api/links/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Something went wrong");
-      }
-
-      setLinks((prevLinks) => prevLinks.filter((link) => link.id !== id));
-      toast.success("Link deleted successfully");
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  }
-
-  // Handle drag end event
-  async function handleDragEnd(event: any) {
+  // Handle drag end
+  function handleDragEnd(event: any) {
     const { active, over } = event;
 
     if (active.id !== over.id) {
-      setLinks((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+      const oldIndex = links.findIndex((item) => item.id === active.id);
+      const newIndex = links.findIndex((item) => item.id === over.id);
 
-        const newItems = arrayMove(items, oldIndex, newIndex);
-        const updatedLinks = newItems.map((item, index) => ({
-          ...item,
-          order: index,
-        }));
+      const newItems = arrayMove(links, oldIndex, newIndex);
+      const updatedLinks = newItems.map((item, index) => ({
+        ...item,
+        order: index,
+      }));
 
-        // Update the order in the database
-        fetch("/api/links/reorder", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedLinks),
-        }).catch((error) => {
-          console.error("Failed to update link order:", error);
-          toast.error("Failed to update link order");
-        });
-
-        return updatedLinks;
-      });
+      reorderLinks(updatedLinks);
     }
   }
 
   return (
     <div className='space-y-6'>
-      <form onSubmit={onAddLink} className='space-y-4'>
-        <div>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder='Link Title' required disabled={isLoading} />
-        </div>
-        <div>
-          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder='https://example.com' type='url' required disabled={isLoading} />
-        </div>
-        <Button type='submit' disabled={isLoading} className='w-full'>
-          {isLoading ? "Adding..." : "Add Link"}
-        </Button>
-      </form>
-
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={links.map((link) => link.id)} strategy={verticalListSortingStrategy}>
           {links.map((link) => (
-            <SortableItem key={link.id} id={link.id} title={link.title} url={link.url} onDelete={onDeleteLink} />
+            <SortableItem key={link.id} link={link} onDelete={removeLink} />
           ))}
         </SortableContext>
       </DndContext>
+
+      <Dialog open={isAddingLink} onOpenChange={setIsAddingLink}>
+        <DialogTrigger asChild>
+          <Button className='w-full' variant='outline'>
+            <Plus className='mr-2 h-4 w-4' />
+            Add New
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogTitle>Choose Link Type</DialogTitle>
+          <LinkTypeSelector
+            onSelect={(type) => {
+              setSelectedType(type);
+              setIsAddingLink(false);
+              setShowForm(true);
+            }}
+            onClose={() => setIsAddingLink(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent side='bottom'>
+          <SheetHeader>
+            <SheetTitle>
+              Add {selectedType?.charAt(0).toUpperCase()}
+              {selectedType?.slice(1)}
+            </SheetTitle>
+          </SheetHeader>
+          <div className='p-6'>
+            {selectedType && (
+              <LinkForm
+                type={selectedType}
+                onSubmit={(data) => {
+                  handleAddLink(data);
+                  setShowForm(false);
+                }}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

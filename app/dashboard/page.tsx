@@ -3,32 +3,46 @@ import { authOptions } from "@/lib/auth";
 import { LinkManager } from "@/components/dashboard/link-manager";
 import { getUserLinks } from "@/lib/data/links";
 import { ProfileSettings } from "@/components/dashboard/profile-settings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { db } from "@/lib/db";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
-  const links = await getUserLinks(session!.user.id);
+
+  if (!session) {
+    return null;
+  }
+
+  // Fetch complete user data including links and social links
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      links: {
+        orderBy: { order: "asc" },
+      },
+      socialLinks: true,
+    },
+  });
+
+  if (!user) return null;
 
   return (
-    <div className='flex flex-col items-center min-h-screen p-4'>
-      <div className='w-full max-w-md space-y-6'>
-        <div className='text-center'>
-          <h1 className='text-2xl font-bold'>@{session!.user.username}</h1>
-          <p className='text-sm text-muted-foreground mt-1'>Manage your profile</p>
+    <div className='flex min-h-screen flex-col'>
+      <main className='flex-1 container py-8 px-4 space-y-4 sm:px-8'>
+        <div className='flex items-center gap-2'>
+          <span className='text-xs text-muted-foreground'>seeall.info/</span>
+          <span className='text-xs font-medium'>{session.user.username}</span>
         </div>
-        <div className='space-y-6'>
-          <ProfileSettings
-            initialData={{
-              displayName: session!.user.displayName,
-              bio: session!.user.bio,
-              socialLinks: session!.user.socialLinks || [],
-            }}
-          />
-          <div className='border-t pt-6'>
-            <h2 className='text-lg font-semibold mb-4'>Your Links</h2>
-            <LinkManager initialLinks={links} userId={session!.user.id} />
-          </div>
-        </div>
-      </div>
+
+        <ProfileSettings
+          initialData={{
+            displayName: user.displayName || "",
+            bio: user.bio || "",
+            socialLinks: user.socialLinks,
+          }}
+        />
+        <LinkManager initialLinks={user.links} userId={user.id} />
+      </main>
     </div>
   );
 }

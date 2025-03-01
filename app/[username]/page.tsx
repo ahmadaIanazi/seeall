@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { getUserByUsername } from "@/lib/data/user";
-import { getUserLinks } from "@/lib/data/links";
+import type { Metadata } from "next";
 import { LinkList } from "@/components/links/link-list";
-import { Metadata } from "next";
 import { getSocialIcon } from "@/components/social-icons";
 
 interface Props {
@@ -14,8 +13,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!user) return { title: "Not Found" };
 
   return {
-    title: user.displayName ? `${user.displayName} (@${user.username})` : `@${user.username}`,
-    description: user.bio || `Check out ${user.username}'s links on SeeAll.info`,
+    title: user.displayName || user.username,
+    description: user.bio || `Check out ${user.username}'s links`,
   };
 }
 
@@ -23,28 +22,29 @@ export default async function ProfilePage({ params }: Props) {
   const user = await getUserByUsername(params.username);
   if (!user) notFound();
 
-  const links = await getUserLinks(user.id);
-
   return (
-    <div className='flex flex-col items-center min-h-screen p-4'>
-      <div className='w-full max-w-md space-y-6'>
+    <main className='flex min-h-screen flex-col items-center py-8 px-4'>
+      <div className='w-full max-w-md space-y-8'>
+        {/* Profile Header */}
         <div className='text-center space-y-3'>
-          <h1 className='text-2xl font-bold'>{user.displayName || `@${user.username}`}</h1>
-          {user.displayName && <p className='text-muted-foreground'>@{user.username}</p>}
+          <h1 className='text-2xl font-bold'>{user.displayName || user.username}</h1>
           {user.bio && <p className='text-muted-foreground'>{user.bio}</p>}
 
-          {user.socialLinks && user.socialLinks.length > 0 && (
-            <div className='flex justify-center gap-4 pt-2'>
+          {/* Social Links */}
+          {user.socialLinks.length > 0 && (
+            <div className='flex justify-center gap-4'>
               {user.socialLinks.map((link) => (
-                <a key={link.id} href={link.url} target='_blank' rel='noopener noreferrer' className='text-muted-foreground hover:text-foreground transition-colors'>
+                <a key={link.id} href={link.url} target='_blank' rel='noopener noreferrer' className='text-muted-foreground hover:text-primary transition-colors'>
                   {getSocialIcon(link.platform)}
                 </a>
               ))}
             </div>
           )}
         </div>
-        <LinkList links={links} />
+
+        {/* Links */}
+        <LinkList links={user.links} />
       </div>
-    </div>
+    </main>
   );
 }
