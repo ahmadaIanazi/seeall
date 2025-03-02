@@ -1,15 +1,20 @@
+import { AuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { getUserByUsername } from "@/lib/data/user";
 
-export const authOptions: NextAuthOptions = {
+if (!process.env.NEXTAUTH_SECRET) {
+  throw new Error("Please provide NEXTAUTH_SECRET environment variable");
+}
+
+export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(db),
   session: {
     strategy: "jwt",
   },
+  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/login",
   },
@@ -41,7 +46,11 @@ export const authOptions: NextAuthOptions = {
             email: null,
           };
         } catch (error) {
-          console.error("Auth error:", error);
+          // Handle database-specific errors
+          if (error.code?.startsWith("P")) {
+            console.error("Database error during auth:", error);
+            throw new Error("Database error, please try again later");
+          }
           throw error;
         }
       },

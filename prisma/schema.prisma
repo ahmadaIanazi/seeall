@@ -14,7 +14,7 @@ model User {
   username      String       @unique
   displayName   String?
   bio           String?
-  email         String       @unique
+  email         String?      @unique  // Make email optional
   emailVerified DateTime?
   image         String?
   password      String?
