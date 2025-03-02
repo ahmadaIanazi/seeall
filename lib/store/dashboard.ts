@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Link, SocialLink } from "@prisma/client";
+import { Link } from "@prisma/client";
 
 interface DashboardState {
   // Profile State
@@ -104,23 +104,16 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         throw new Error(error || "Failed to update profile");
       }
 
-      // Save links changes if there are any
-      if (state.links.length > 0) {
-        const linksResponse = await fetch("/api/links/reorder", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            state.links.map((link, index) => ({
-              id: link.id,
-              order: index,
-            }))
-          ),
-        });
+      // Save links changes
+      const linksResponse = await fetch("/api/links", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state.links),
+      });
 
-        if (!linksResponse.ok) {
-          const error = await linksResponse.text();
-          throw new Error(error || "Failed to update links");
-        }
+      if (!linksResponse.ok) {
+        const error = await linksResponse.text();
+        throw new Error(error || "Failed to update links");
       }
 
       set({ hasUnsavedChanges: false });

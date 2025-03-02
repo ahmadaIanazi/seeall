@@ -12,8 +12,6 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // Initialize database tables
-if (process.env.NODE_ENV === "production") {
-  import("./init-db").then(({ initDatabase }) => {
-    initDatabase().catch(console.error);
-  });
-}
+import("./init-db").then(({ initDatabase }) => {
+  initDatabase().catch(console.error);
+});
