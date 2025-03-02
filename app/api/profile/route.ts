@@ -25,7 +25,7 @@ export async function PUT(req: Request) {
             data: socialLinks.map((link: SocialLink) => ({
               platform: link.platform,
               url: link.url,
-              userId: session.user.id,
+              // userId is handled automatically by Prisma
             })),
           },
         },
@@ -38,6 +38,6 @@ export async function PUT(req: Request) {
     return NextResponse.json(updatedUser);
   } catch (error) {
     console.error("Failed to update profile:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return new NextResponse(error instanceof Error ? error.message : "Internal Server Error", { status: 500 });
   }
 }
