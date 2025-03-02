@@ -1,5 +1,5 @@
 import { DefaultSession } from "next-auth";
-import { SocialLink } from "@prisma/client";
+import "next-auth";
 
 declare module "next-auth" {
   interface Session {
@@ -8,15 +8,22 @@ declare module "next-auth" {
       username: string;
       displayName: string | null;
       bio: string | null;
-      socialLinks: SocialLink[];
+      socialLinks: Array<{
+        platform: string;
+        url: string;
+      }>;
     } & DefaultSession["user"];
   }
 
   interface User {
+    id: string;
     username: string;
     displayName: string | null;
     bio: string | null;
-    socialLinks: SocialLink[];
+    socialLinks: Array<{
+      platform: string;
+      url: string;
+    }>;
   }
 }
 
@@ -26,6 +33,9 @@ declare module "next-auth/jwt" {
     username: string;
     displayName: string | null;
     bio: string | null;
-    socialLinks: SocialLink[];
+    socialLinks: Array<{
+      platform: string;
+      url: string;
+    }>;
   }
 }

@@ -1,54 +1,192 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING") // Used for migrations
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-1.0.x"]
 }
 
 model User {
-  id            String       @id @default(cuid())
-  username      String       @unique
+  id            String    @id @default(cuid())
+  username      String    @unique
+  password      String
+  email         String?   @unique
+  emailVerified DateTime?
   displayName   String?
   bio           String?
-  email         String?      @unique  // Make email optional
-  emailVerified DateTime?
-  image         String?
-  password      String
+  profileImage  String?
+  page          Page?     @relation("UserPage")
   links         Link[]
   socialLinks   SocialLink[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  comments      Comment[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation("UserPage", fields: [userId], references: [id], onDelete: Cascade)
+  controls  Controls?
+  stats     Stats?
+  products  Product[]
+  categories Category[]
+  forms     Form[]
+  comments  Comment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Controls {
+  id               String   @id @default(cuid())
+  pageId           String   @unique
+  alignment        String   @default("center")
+  brandColor       String?
+  backgroundColor  String?
+  footer           String?
+  style            String?
+  font             String?
+  language         String?
+  multipleLanguage Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now())
+  page             Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model Stats {
+  id        String   @id @default(cuid())
+  pageId    String   @unique
+  visits    Int      @default(0)
+  clicks    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id               String     @id @default(cuid())
+  pageId           String
+  name             String
+  image            String?
+  icon             String?
+  multiLanguage    Json?
+  parentCategoryId String?
+  parentCategory   Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  subCategories    Category[] @relation("CategoryHierarchy")
+  products         Product[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @default(now())
+  page             Page       @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([parentCategoryId])
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  pageId        String
+  categoryId    String?
+  name          String
+  calories      Int?
+  allergies     String?
+  description   String?
+  multiLanguage Json?
+  price         Float?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now())
+  page          Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+
+  @@index([pageId])
+  @@index([categoryId])
+}
+
+model Form {
+  id          String          @id @default(cuid())
+  pageId      String
+  name        String
+  description String?
+  fields      FormField[]
+  submissions FormSubmission[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now())
+  page        Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+}
+
+model FormField {
+  id        String   @id @default(cuid())
+  formId    String
+  label     String
+  type      String
+  required  Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+}
+
+model FormSubmission {
+  id        String   @id @default(cuid())
+  formId    String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  pageId    String?
+  productId String?
+  userId    String?
+  content   String
+  rating    Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  page      Page?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([productId])
+  @@index([userId])
 }
 
 model Link {
-  id          String    @id @default(cuid())
-  type        String    @default("link") // "link", "image", "map", "header"
-  title       String
-  url         String?   // Optional now since headers don't need URLs
-  image       String?   // For image links
-  description String?   // For additional context
-  mapLocation Json?     // For storing map coordinates and info
-  order       Int       @default(0)
+  id          String   @id @default(cuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  type        String   @default("link")
+  title       String
+  url         String?
+  image       String?
+  description String?
+  mapLocation Json?
+  order       Int      @default(0)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
 
   @@index([userId])
 }
 
 model SocialLink {
   id        String   @id @default(cuid())
+  userId    String
   platform  String
   url       String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@index([userId])
-} 
+}

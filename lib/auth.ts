@@ -1,5 +1,5 @@
-import { AuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
@@ -10,7 +10,7 @@ if (!process.env.NEXTAUTH_SECRET) {
 }
 
 export const authOptions: AuthOptions = {
-  adapter: PrismaAdapter(db),
+  adapter: PrismaAdapter(db) as never,
   session: {
     strategy: "jwt",
   },

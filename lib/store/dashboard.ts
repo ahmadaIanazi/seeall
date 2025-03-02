@@ -3,9 +3,14 @@ import { Link, SocialLink } from "@prisma/client";
 
 interface DashboardState {
   // Profile State
-  displayName: string;
+  displayName: string | null;
   bio: string | null;
-  socialLinks: SocialLink[];
+  profileImage: string | null;
+  alignment: string;
+  socialLinks: Array<{
+    platform: string;
+    url: string;
+  }>;
 
   // Links State
   links: Link[];
@@ -14,8 +19,8 @@ interface DashboardState {
   hasUnsavedChanges: boolean;
 
   // Actions
-  setProfile: (profile: { displayName: string; bio: string | null }) => void;
-  setSocialLinks: (links: SocialLink[]) => void;
+  setProfile: (profile: { displayName: string | null; bio: string | null; profileImage: string | null; alignment: string }) => void;
+  setSocialLinks: (links: Array<{ platform: string; url: string }>) => void;
   setLinks: (links: Link[]) => void;
   updateLink: (link: Link) => void;
   addLink: (link: Link) => void;
@@ -25,65 +30,44 @@ interface DashboardState {
   // Save Changes
   saveChanges: () => Promise<void>;
   resetChanges: () => void;
-
-  // Initialize store with fetched data
-  initializeStore: (data: { displayName: string; bio: string | null; socialLinks: SocialLink[] }) => void;
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
   // Initial State
-  displayName: "",
+  displayName: null,
   bio: null,
+  profileImage: null,
+  alignment: "center",
   socialLinks: [],
   links: [],
   hasUnsavedChanges: false,
 
-  // Initialize store with fetched data
-  initializeStore: (data: { displayName: string; bio: string | null; socialLinks: SocialLink[] }) => {
-    set({
-      displayName: data.displayName,
-      bio: data.bio,
-      socialLinks: data.socialLinks,
-      hasUnsavedChanges: false,
-    });
-  },
-
-  // Profile Actions
+  // Actions
   setProfile: (profile) => {
     set({
       displayName: profile.displayName,
       bio: profile.bio,
+      profileImage: profile.profileImage,
+      alignment: profile.alignment,
       hasUnsavedChanges: true,
     });
   },
 
   setSocialLinks: (links) => {
-    set({
-      socialLinks: links,
-      hasUnsavedChanges: true,
-    });
+    set({ socialLinks: links, hasUnsavedChanges: true });
   },
 
-  // Links Actions
   setLinks: (links) => {
-    set(() => ({
-      links,
-      hasUnsavedChanges: true,
-    }));
+    set({ links, hasUnsavedChanges: true });
   },
 
-  updateLink: (updatedLink) => {
-    set((state) => ({
-      links: state.links.map((link) => (link.id === updatedLink.id ? updatedLink : link)),
-      hasUnsavedChanges: true,
-    }));
+  updateLink: (link) => {
+    const links = get().links.map((l) => (l.id === link.id ? link : l));
+    set({ links, hasUnsavedChanges: true });
   },
 
-  addLink: (newLink) => {
-    set((state) => ({
-      links: [...state.links, newLink],
-      hasUnsavedChanges: true,
-    }));
+  addLink: (link) => {
+    set((state) => ({ links: [...state.links, link], hasUnsavedChanges: true }));
   },
 
   removeLink: (id) => {
@@ -93,14 +77,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }));
   },
 
-  reorderLinks: (reorderedLinks) => {
-    set(() => ({
-      links: reorderedLinks,
-      hasUnsavedChanges: true,
-    }));
+  reorderLinks: (links) => {
+    set({ links, hasUnsavedChanges: true });
   },
 
-  // Save all changes
+  // Save Changes
   saveChanges: async () => {
     const state = get();
 
@@ -112,22 +93,35 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         body: JSON.stringify({
           displayName: state.displayName,
           bio: state.bio,
+          profileImage: state.profileImage,
+          alignment: state.alignment,
           socialLinks: state.socialLinks,
         }),
       });
 
-      if (!profileResponse.ok) throw new Error("Failed to update profile");
+      if (!profileResponse.ok) {
+        const error = await profileResponse.text();
+        throw new Error(error || "Failed to update profile");
+      }
 
-      // Save links changes
-      const linksResponse = await fetch("/api/links/batch", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          links: state.links,
-        }),
-      });
+      // Save links changes if there are any
+      if (state.links.length > 0) {
+        const linksResponse = await fetch("/api/links/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            state.links.map((link, index) => ({
+              id: link.id,
+              order: index,
+            }))
+          ),
+        });
 
-      if (!linksResponse.ok) throw new Error("Failed to update links");
+        if (!linksResponse.ok) {
+          const error = await linksResponse.text();
+          throw new Error(error || "Failed to update links");
+        }
+      }
 
       set({ hasUnsavedChanges: false });
     } catch (error) {
@@ -136,7 +130,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }
   },
 
-  // Reset changes
+  // Reset Changes
   resetChanges: () => {
     set({ hasUnsavedChanges: false });
   },

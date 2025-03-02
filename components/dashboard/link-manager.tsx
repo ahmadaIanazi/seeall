@@ -22,15 +22,16 @@ interface Link {
   id: string;
   type: string;
   title: string;
-  url?: string;
-  image?: string; // Will store base64 image data
-  description?: string;
-  mapLocation?: {
-    lat: number;
-    lng: number;
+  url: string | null;
+  image: string | null;
+  description: string | null;
+  mapLocation: {
     address: string;
-  };
+  } | null;
   order: number;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface LinkManagerProps {
@@ -175,14 +176,17 @@ export function LinkManager({ initialLinks, userId }: LinkManagerProps) {
   // Handle adding a link
   function handleAddLink(formData: FormData) {
     try {
+      const title = formData.get("title");
+      if (!title || typeof title !== "string") throw new Error("Title is required");
+
       const data = {
-        type: selectedType,
-        title: formData.get("title"),
+        type: selectedType || "link",
+        title,
         userId,
-        url: formData.get("url") as string,
-        image: formData.get("image") as string,
-        description: formData.get("description") as string,
-        mapLocation: selectedType === "map" ? { address: formData.get("address") } : null,
+        url: formData.get("url") as string | null,
+        image: formData.get("image") as string | null,
+        description: formData.get("description") as string | null,
+        mapLocation: selectedType === "map" ? { address: formData.get("address") as string } : null,
       };
 
       // Add to store
@@ -205,7 +209,7 @@ export function LinkManager({ initialLinks, userId }: LinkManagerProps) {
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
-    if (active.id !== over.id) {
+    if (over && active.id !== over.id) {
       const oldIndex = links.findIndex((item) => item.id === active.id);
       const newIndex = links.findIndex((item) => item.id === over.id);
 
