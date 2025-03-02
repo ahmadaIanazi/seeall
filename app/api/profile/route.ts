@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { SocialLink } from "@prisma/client";
 
 export async function PUT(req: Request) {
   try {
@@ -21,9 +22,10 @@ export async function PUT(req: Request) {
         socialLinks: {
           deleteMany: {}, // Remove all existing links
           createMany: {
-            data: socialLinks.map((link: any) => ({
+            data: socialLinks.map((link: SocialLink) => ({
               platform: link.platform,
               url: link.url,
+              userId: session.user.id,
             })),
           },
         },

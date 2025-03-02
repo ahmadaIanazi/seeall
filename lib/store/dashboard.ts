@@ -50,23 +50,23 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
   // Profile Actions
   setProfile: (profile) => {
-    set((state) => ({
+    set({
       displayName: profile.displayName,
       bio: profile.bio,
       hasUnsavedChanges: true,
-    }));
+    });
   },
 
   setSocialLinks: (links) => {
-    set((state) => ({
+    set({
       socialLinks: links,
       hasUnsavedChanges: true,
-    }));
+    });
   },
 
   // Links Actions
   setLinks: (links) => {
-    set((state) => ({
+    set(() => ({
       links,
       hasUnsavedChanges: true,
     }));
@@ -94,7 +94,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
 
   reorderLinks: (reorderedLinks) => {
-    set((state) => ({
+    set(() => ({
       links: reorderedLinks,
       hasUnsavedChanges: true,
     }));

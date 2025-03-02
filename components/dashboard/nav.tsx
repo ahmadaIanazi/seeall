@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { User } from "next-auth";
 import { useDashboardStore } from "@/lib/store/dashboard";
 import { toast } from "sonner";
-import { ExternalLinkIcon, EyeIcon, Loader2, LogOutIcon } from "lucide-react";
+import { ExternalLinkIcon, Loader2, LogOutIcon } from "lucide-react";
 import { useState } from "react";
 
 interface DashboardNavProps {
@@ -23,6 +23,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
       await saveChanges();
       toast.success("Changes saved successfully");
     } catch (error) {
+      console.error("Failed to save changes:", error);
       toast.error("Failed to save changes");
     } finally {
       setIsSaving(false);

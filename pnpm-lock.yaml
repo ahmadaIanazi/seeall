@@ -90,6 +90,9 @@ importers:
       '@eslint/eslintrc':
         specifier: ^3
         version: 3.3.0
+      '@next/eslint-plugin-next':
+        specifier: ^15.2.0
+        version: 15.2.0
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.0.9
@@ -102,6 +105,12 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.0.4(@types/react@19.0.10)
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.25.0
+        version: 8.25.0(@typescript-eslint/parser@8.25.0(eslint@9.21.0(jiti@2.4.2))(typescript@5.7.3))(eslint@9.21.0(jiti@2.4.2))(typescript@5.7.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.25.0
+        version: 8.25.0(eslint@9.21.0(jiti@2.4.2))(typescript@5.7.3)
       eslint:
         specifier: ^9
         version: 9.21.0(jiti@2.4.2)
@@ -503,6 +512,9 @@ packages:
 
   '@next/env@15.2.1-canary.1':
     resolution: {integrity: sha512-JX3O7hr6C0rg3Lyq1LGyb6313m/8hdObHjNvTRW6HeYVuZMlK3/4P1t9gTT1Ie2yZtlQunEdJyhskYFneCluhg==}
+
+  '@next/eslint-plugin-next@15.2.0':
+    resolution: {integrity: sha512-jHFUG2OwmAuOASqq253RAEG/5BYcPHn27p1NoWZDCf4OdvdK0yRYWX92YKkL+Mk2s+GyJrmd/GATlL5b2IySpw==}
 
   '@next/eslint-plugin-next@15.2.1-canary.1':
     resolution: {integrity: sha512-MByTwWAK/O5IvYvgkWupgOZ15d5VzLkUFOJ9TG70qUrOaQL9hcbBhiQGs/IKTaJKm5nb7sKdayCjibWNbHLJfw==}
@@ -2767,6 +2779,10 @@ snapshots:
     optional: true
 
   '@next/env@15.2.1-canary.1': {}
+
+  '@next/eslint-plugin-next@15.2.0':
+    dependencies:
+      fast-glob: 3.3.1
 
   '@next/eslint-plugin-next@15.2.1-canary.1':
     dependencies:

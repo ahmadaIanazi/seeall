@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { Link } from "@prisma/client";
 
 export async function PUT(req: Request) {
   try {
@@ -14,7 +15,7 @@ export async function PUT(req: Request) {
 
     // Update all links in a transaction
     await db.$transaction(
-      links.map((link: any) =>
+      links.map((link: Link) =>
         db.link.upsert({
           where: { id: link.id },
           update: {

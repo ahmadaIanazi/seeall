@@ -26,7 +26,7 @@ function ImageLink({ title, image, url }: { title: string; image: string; url?: 
   );
 }
 
-function MapLink({ title, mapLocation }: { title: string; mapLocation: any }) {
+function MapLink({ title, mapLocation }: { title: string; mapLocation: { address: string } }) {
   return (
     <a
       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapLocation.address)}`}

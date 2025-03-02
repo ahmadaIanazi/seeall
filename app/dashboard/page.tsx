@@ -1,9 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { LinkManager } from "@/components/dashboard/link-manager";
-import { getUserLinks } from "@/lib/data/links";
 import { ProfileSettings } from "@/components/dashboard/profile-settings";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/db";
 
 export default async function DashboardPage() {

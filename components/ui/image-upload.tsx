@@ -25,32 +25,31 @@ export function ImageUpload({ onChange, value, disabled }: ImageUploadProps) {
     }
   }, []);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragActive(false);
-
-      const file = e.dataTransfer.files?.[0];
-      handleFile(file);
+  const handleFile = useCallback(
+    (file?: File) => {
+      if (file && file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64 = e.target?.result as string;
+          onChange(base64);
+        };
+        reader.readAsDataURL(file);
+      }
     },
     [onChange]
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      handleFile(e.dataTransfer.files[0]);
+    },
+    [handleFile]
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     handleFile(file);
-  };
-
-  const handleFile = (file?: File) => {
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64 = e.target?.result as string;
-        onChange(base64);
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const handleRemove = useCallback(() => {
