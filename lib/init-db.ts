@@ -16,14 +16,14 @@ export async function initDatabase() {
       "email" TEXT,
       "emailVerified" TIMESTAMP(3),
       "image" TEXT,
-      "password" TEXT,
+      "password" TEXT NOT NULL,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" TIMESTAMP(3) NOT NULL,
       CONSTRAINT "User_pkey" PRIMARY KEY ("id")
     )`;
 
     await db.$executeRaw`CREATE UNIQUE INDEX IF NOT EXISTS "User_username_key" ON "User"("username")`;
-    await db.$executeRaw`CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email")`;
+    await db.$executeRaw`CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email") WHERE "email" IS NOT NULL`;
 
     // Create other tables
     await db.$executeRaw`CREATE TABLE IF NOT EXISTS "Link" (

@@ -43,14 +43,9 @@ export const authOptions: AuthOptions = {
             displayName: user.displayName ?? null,
             bio: user.bio ?? null,
             socialLinks: user.socialLinks ?? [],
-            email: null,
           };
         } catch (error) {
-          // Handle database-specific errors
-          if (error.code?.startsWith("P")) {
-            console.error("Database error during auth:", error);
-            throw new Error("Database error, please try again later");
-          }
+          if (error instanceof Error) console.error("Auth error:", error.message);
           throw error;
         }
       },

@@ -1,4 +1,5 @@
-import { createUser, getUserByUsername } from "@/lib/data/user";
+import { db } from "@/lib/db";
+import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -16,18 +17,34 @@ export async function POST(req: Request) {
     const json = await req.json();
     const body = registerSchema.parse(json);
 
-    const existingUser = await getUserByUsername(body.username);
+    // Check if user exists
+    const existingUser = await db.user.findUnique({
+      where: { username: body.username },
+    });
+
     if (existingUser) {
-      return NextResponse.json({ message: "Username already taken" }, { status: 400 });
+      return new NextResponse("Username already taken", { status: 409 });
     }
 
-    await createUser(body);
-    return NextResponse.json({ message: "User created successfully" });
+    const hashedPassword = await hash(body.password, 10);
+
+    // Create user without email
+    const user = await db.user.create({
+      data: {
+        username: body.username,
+        password: hashedPassword,
+        // Don't include email field if it's not provided
+      },
+    });
+
+    return NextResponse.json({
+      user: {
+        username: user.username,
+        id: user.id,
+      },
+    });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ message: error.errors[0].message }, { status: 400 });
-    }
-
-    return NextResponse.json({ message: "Something went wrong" }, { status: 500 });
+    console.error("Error creating user:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

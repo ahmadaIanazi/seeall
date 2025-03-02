@@ -17,7 +17,7 @@ model User {
   email         String?      @unique  // Make email optional
   emailVerified DateTime?
   image         String?
-  password      String?
+  password      String
   links         Link[]
   socialLinks   SocialLink[]
   createdAt     DateTime     @default(now())
