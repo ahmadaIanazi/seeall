@@ -1,16 +1,38 @@
 import { create } from "zustand";
 import { Link } from "@prisma/client";
 
+// Define types for our store
+interface PageControls {
+  alignment: string;
+}
+
+interface Page {
+  controls: PageControls;
+}
+
+interface Profile {
+  displayName: string | null;
+  bio: string | null;
+  profileImage: string | null;
+  page: Page;
+}
+
+interface SocialLink {
+  platform: string;
+  url: string;
+}
+
 interface DashboardState {
   // Profile State
   displayName: string | null;
   bio: string | null;
   profileImage: string | null;
-  alignment: string;
-  socialLinks: Array<{
-    platform: string;
-    url: string;
-  }>;
+  page: {
+    controls: {
+      alignment: string;
+    };
+  };
+  socialLinks: SocialLink[];
 
   // Links State
   links: Link[];
@@ -19,13 +41,14 @@ interface DashboardState {
   hasUnsavedChanges: boolean;
 
   // Actions
-  setProfile: (profile: { displayName: string | null; bio: string | null; profileImage: string | null; alignment: string }) => void;
-  setSocialLinks: (links: Array<{ platform: string; url: string }>) => void;
+  setProfile: (profile: Profile) => void;
+  setSocialLinks: (links: SocialLink[]) => void;
   setLinks: (links: Link[]) => void;
   updateLink: (link: Link) => void;
   addLink: (link: Link) => void;
   removeLink: (id: string) => void;
   reorderLinks: (links: Link[]) => void;
+  setAlignment: (alignment: string) => void;
 
   // Save Changes
   saveChanges: () => Promise<void>;
@@ -37,7 +60,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   displayName: null,
   bio: null,
   profileImage: null,
-  alignment: "center",
+  page: {
+    controls: {
+      alignment: "center",
+    },
+  },
   socialLinks: [],
   links: [],
   hasUnsavedChanges: false,
@@ -48,7 +75,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       displayName: profile.displayName,
       bio: profile.bio,
       profileImage: profile.profileImage,
-      alignment: profile.alignment,
+      page: profile.page,
       hasUnsavedChanges: true,
     });
   },
@@ -81,6 +108,19 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     set({ links, hasUnsavedChanges: true });
   },
 
+  setAlignment: (alignment) => {
+    set((state) => ({
+      page: {
+        ...state.page,
+        controls: {
+          ...state.page.controls,
+          alignment,
+        },
+      },
+      hasUnsavedChanges: true,
+    }));
+  },
+
   // Save Changes
   saveChanges: async () => {
     const state = get();
@@ -94,7 +134,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
           displayName: state.displayName,
           bio: state.bio,
           profileImage: state.profileImage,
-          alignment: state.alignment,
+          page: {
+            controls: {
+              alignment: state.page.controls.alignment,
+            },
+          },
           socialLinks: state.socialLinks,
         }),
       });
