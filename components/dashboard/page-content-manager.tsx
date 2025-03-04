@@ -1,37 +1,31 @@
 "use client";
-
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useDashboardStore } from "@/lib/store/dashboard";
-import { closestCenter, DndContext, DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Heading, Image as ImageIcon, Link as LinkIcon, MapPin, Plus, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { LinkTypeSelector } from "./link-type-selector";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ImageUpload } from "@/components/ui/image-upload";
-import { Textarea } from "@/components/ui/textarea";
-import Image from "next/image";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useDashboardStore } from "@/lib/store/dashboard";
+import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Link } from "@prisma/client";
+import { GripVertical, Heading, Image as ImageIcon, Link as LinkIcon, MapPin, Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { LinkTypeSelector } from "./link-type-selector";
 
-// ✅ Define Props
-interface PageContentManagerProps {
-  initialContent: Link[];
-  pageId: string;
+function getLinkIcon(type: string) {
+  if (type === "link") return <LinkIcon className='h-4 w-4' />;
+  if (type === "image") return <ImageIcon className='h-4 w-4' />;
+  if (type === "map") return <MapPin className='h-4 w-4' />;
+  if (type === "header") return <Heading className='h-4 w-4' />;
+  return <LinkIcon className='h-4 w-4' />;
 }
 
-// ✅ SortableItem Component (Handles Drag & Drop)
 function SortableItem({ link, onDelete }: { link: Link; onDelete: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: link.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
+  const style = { transform: CSS.Transform.toString(transform), transition };
   return (
     <div ref={setNodeRef} style={style} className='flex items-center gap-4 rounded-lg border p-4'>
       <div {...attributes} {...listeners} className='cursor-move'>
@@ -56,102 +50,66 @@ function SortableItem({ link, onDelete }: { link: Link; onDelete: (id: string) =
   );
 }
 
-// ✅ Get Correct Icon for Each Content Type
-function getLinkIcon(type: string) {
-  switch (type) {
-    case "link":
-      return <LinkIcon className='h-4 w-4' />;
-    case "image":
-      return <ImageIcon className='h-4 w-4' />;
-    case "map":
-      return <MapPin className='h-4 w-4' />;
-    case "header":
-      return <Heading className='h-4 w-4' />;
-    default:
-      return <LinkIcon className='h-4 w-4' />;
-  }
-}
-
-// ✅ PageContentManager Component (Main Component)
-export function PageContentManager({ initialContent, pageId }: PageContentManagerProps) {
+export function PageContentManager({ pageId }: { pageId: string }) {
   const { links, setLinks, addLink, removeLink, reorderLinks } = useDashboardStore();
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  // ✅ Load Initial Content into Zustand Store
   useEffect(() => {
-    setLinks(initialContent);
-  }, [initialContent, setLinks]);
-
-  useEffect(() => {
-    if (!showForm) {
-      setTimeout(() => {
-        document.getElementById("add-link-button")?.focus(); // Refocus on Add button
-      }, 100);
+    async function fetchLinks() {
+      try {
+        const res = await fetch(`/api/links/${pageId}`);
+        if (!res.ok) throw new Error("Failed to fetch links");
+        const data: Link[] = await res.json();
+        setLinks(data);
+      } catch (error) {
+        console.error(error);
+      }
     }
-  }, [showForm]);
+    fetchLinks();
+  }, [pageId, setLinks]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  // ✅ Handle Adding a New Content Block
   function handleAddLink(formData: FormData) {
-    try {
-      const title = formData.get("title") as string;
-      if (!title) throw new Error("Title is required");
-
-      const newLink: Link = {
-        id: crypto.randomUUID(),
-        type: selectedType || "link",
-        title,
-        url: formData.get("url") as string | null,
-        image: formData.get("image") as string | null,
-        description: formData.get("description") as string | null,
-        order: links.length,
-        pageId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      addLink(newLink);
-      setShowForm(false);
-    } catch (error) {
-      console.error("Failed to add link:", error);
-    }
+    const title = formData.get("title") as string;
+    if (!title) return;
+    addLink({
+      id: crypto.randomUUID(),
+      type: selectedType || "link",
+      title,
+      url: (formData.get("url") as string) || null,
+      image: (formData.get("image") as string) || null,
+      description: null,
+      order: links.length,
+      pageId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    setShowForm(false);
   }
 
-  // ✅ Handle Drag & Drop Sorting
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = links.findIndex((item) => item.id === active.id);
-      const newIndex = links.findIndex((item) => item.id === over.id);
-
-      const updatedLinks = arrayMove(links, oldIndex, newIndex).map((item, index) => ({
-        ...item,
-        order: index,
-      }));
-
-      reorderLinks(updatedLinks);
+      const oldIndex = links.findIndex((i) => i.id === active.id);
+      const newIndex = links.findIndex((i) => i.id === over.id);
+      const reordered = arrayMove(links, oldIndex, newIndex).map((item, index) => ({ ...item, order: index }));
+      reorderLinks(reordered);
     }
   }
 
   return (
     <div className='space-y-6'>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={(links || []).map((link) => link.id)} strategy={verticalListSortingStrategy}>
-          {(links || []).map((link) => (
+        <SortableContext items={links.map((link) => link.id)} strategy={verticalListSortingStrategy}>
+          {links.map((link) => (
             <SortableItem key={link.id} link={link} onDelete={removeLink} />
           ))}
         </SortableContext>
       </DndContext>
 
-      {/* ✅ Dialog for Selecting Content Type */}
       <Dialog open={isAddingLink} onOpenChange={setIsAddingLink}>
         <DialogTrigger asChild>
           <Button className='w-full' variant='outline'>
@@ -172,14 +130,10 @@ export function PageContentManager({ initialContent, pageId }: PageContentManage
         </DialogContent>
       </Dialog>
 
-      {/* ✅ Sheet to Input Content Details */}
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent side='bottom'>
           <SheetHeader>
-            <SheetTitle>
-              Add {selectedType?.charAt(0).toUpperCase()}
-              {selectedType?.slice(1)}
-            </SheetTitle>
+            <SheetTitle>Add {selectedType?.charAt(0).toUpperCase() + selectedType?.slice(1)}</SheetTitle>
           </SheetHeader>
           <div className='p-6'>
             {selectedType && (
@@ -192,19 +146,14 @@ export function PageContentManager({ initialContent, pageId }: PageContentManage
               >
                 <Label>Title</Label>
                 <Input name='title' placeholder='Enter title' required />
-
                 {selectedType === "link" && (
                   <>
                     <Label>URL</Label>
                     <Input name='url' type='url' placeholder='https://example.com' required />
                   </>
                 )}
-
                 {selectedType === "image" && <ImageUpload name='image' />}
-
-                <Button id='add-link-button' type='submit'>
-                  Add
-                </Button>
+                <Button type='submit'>Add</Button>
               </form>
             )}
           </div>

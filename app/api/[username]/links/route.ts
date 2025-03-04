@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(req: NextRequest, { params }: { params: { username: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { pageId: string } }) {
   try {
     const page = await db.page.findUnique({
-      where: { userId: username },
+      where: { pageId },
       include: { links: { orderBy: { order: "asc" } } },
     });
 

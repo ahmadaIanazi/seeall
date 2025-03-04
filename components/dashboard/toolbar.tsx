@@ -1,18 +1,30 @@
 "use client";
 
-import { AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useDashboardStore } from "@/lib/store/dashboard";
 import { cn } from "@/lib/utils";
+import { AlignCenter, AlignLeft, AlignRight } from "lucide-react";
+import { useEffect, useState } from "react";
 
-export function PageToolbar() {
-  const { localPage, setPage } = useDashboardStore();
-  const alignment = localPage?.alignment || "center";
+interface PageToolbarProps {
+  pageId: string | null;
+}
+
+export function PageToolbar({ pageId }: PageToolbarProps) {
+  const { page, setPage, setPageId } = useDashboardStore();
+  const [alignment, setAlignment] = useState("center");
+
+  useEffect(() => {
+    // setPage(page);
+    setPageId(pageId || "");
+  }, [page]);
 
   function handleAlignmentChange(value: string | null): void {
     if (!value) return;
-    setPage({ alignment: value });
+    // setPage({ alignment: value });
   }
+
+  // if (!page) return null;
 
   return (
     <div
