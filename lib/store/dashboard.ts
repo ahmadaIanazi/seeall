@@ -1,54 +1,33 @@
 import { create } from "zustand";
-import { Link } from "@prisma/client";
-
-// Define types for our store
-interface PageControls {
-  alignment: string;
-}
-
-interface Page {
-  controls: PageControls;
-}
-
-interface Profile {
-  displayName: string | null;
-  bio: string | null;
-  profileImage: string | null;
-  page: Page;
-}
-
-interface SocialLink {
-  platform: string;
-  url: string;
-}
+import { Page, SocialLink, Link } from "@prisma/client";
 
 interface DashboardState {
-  // Profile State
-  displayName: string | null;
-  bio: string | null;
-  profileImage: string | null;
-  page: {
-    controls: {
-      alignment: string;
-    };
-  };
+  // Page State
+  page: Page | null;
   socialLinks: SocialLink[];
-
-  // Links State
   links: Link[];
+
+  // Local Edits
+  localPage: Partial<Page> | null;
+  localSocialLinks: SocialLink[];
+  localLinks: Link[];
 
   // Track Changes
   hasUnsavedChanges: boolean;
+  previousState: Partial<DashboardState>;
 
   // Actions
-  setProfile: (profile: Profile) => void;
+  setPage: (page: Partial<Page>) => void;
   setSocialLinks: (links: SocialLink[]) => void;
   setLinks: (links: Link[]) => void;
   updateLink: (link: Link) => void;
   addLink: (link: Link) => void;
   removeLink: (id: string) => void;
   reorderLinks: (links: Link[]) => void;
-  setAlignment: (alignment: string) => void;
+
+  getPage: (username: string) => Promise<Page | null>;
+  // getLinks: (pageId: string) => Link[] | null;
+  // getSocialLinks: (pageId: string) => SocialLink[] | null;
 
   // Save Changes
   saveChanges: () => Promise<void>;
@@ -57,118 +36,155 @@ interface DashboardState {
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
   // Initial State
-  displayName: null,
-  bio: null,
-  profileImage: null,
-  page: {
-    controls: {
-      alignment: "center",
-    },
-  },
+  page: null,
   socialLinks: [],
   links: [],
+  localPage: null,
+  localSocialLinks: [],
+  localLinks: [],
   hasUnsavedChanges: false,
+  previousState: {},
 
   // Actions
-  setProfile: (profile) => {
-    set({
-      displayName: profile.displayName,
-      bio: profile.bio,
-      profileImage: profile.profileImage,
-      page: profile.page,
+  setPage: (page) => {
+    set((state) => ({
+      localPage: { ...state.localPage, ...page },
       hasUnsavedChanges: true,
-    });
+    }));
   },
 
   setSocialLinks: (links) => {
-    set({ socialLinks: links, hasUnsavedChanges: true });
+    set({ localSocialLinks: links, hasUnsavedChanges: true });
   },
 
   setLinks: (links) => {
-    set({ links, hasUnsavedChanges: true });
+    set({ localLinks: links, hasUnsavedChanges: true });
   },
 
   updateLink: (link) => {
-    const links = get().links.map((l) => (l.id === link.id ? link : l));
-    set({ links, hasUnsavedChanges: true });
+    set((state) => ({
+      localLinks: state.localLinks.map((l) => (l.id === link.id ? link : l)),
+      hasUnsavedChanges: true,
+    }));
   },
 
   addLink: (link) => {
-    set((state) => ({ links: [...state.links, link], hasUnsavedChanges: true }));
+    set((state) => ({
+      localLinks: [...(state.localLinks || []), link], // Ensure array existence
+      links: [...(state.links || []), link], // Update rendered links
+      hasUnsavedChanges: true,
+    }));
   },
 
   removeLink: (id) => {
     set((state) => ({
-      links: state.links.filter((link) => link.id !== id),
+      localLinks: state.localLinks.filter((link) => link.id !== id),
       hasUnsavedChanges: true,
     }));
   },
 
-  reorderLinks: (links) => {
-    set({ links, hasUnsavedChanges: true });
+  reorderLinks: async (updatedLinks) => {
+    set({ links: updatedLinks, hasUnsavedChanges: true });
+
+    try {
+      const response = await fetch("/api/links/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedLinks.map(({ id, order }) => ({ id, order }))),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reorder links");
+      }
+
+      console.log("Links reordered successfully.");
+    } catch (error) {
+      console.error("Error reordering links:", error);
+    }
   },
 
-  setAlignment: (alignment) => {
-    set((state) => ({
-      page: {
-        ...state.page,
-        controls: {
-          ...state.page.controls,
-          alignment,
-        },
-      },
-      hasUnsavedChanges: true,
-    }));
+  getPage: async (username: string) => {
+    try {
+      const response = await fetch(`/api/${username}/page`, {
+        method: "GET",
+      });
+      if (!response.ok) throw new Error("Failed to fetch page");
+      return (await response.json()) as Page; // Ensure the return type matches the expected Page type
+    } catch (error) {
+      console.error("❌ Error Getting Page:", error);
+      return null;
+    }
   },
+
+  // getLinks: async (pageId: string) => {
+  //   try {
+  //   } catch (error) {
+  //     console.error("❌ Error Getting Links:", error);
+  //     return null;
+  //   }
+  // },
+  // getSocialLinks: async (pageId: string) => {
+  //   try {
+  //   } catch (error) {
+  //     console.error("❌ Error Getting Social Links:", error);
+  //     return null;
+  //   }
+  // },
 
   // Save Changes
   saveChanges: async () => {
-    const state = get();
-
     try {
-      // Save profile changes
-      const profileResponse = await fetch("/api/profile", {
+      const state = get();
+      console.log("saveChanges called with state:", state);
+
+      // Ensure localLinks & localPage are always defined
+      const localPage = state.localPage || {};
+      const localLinks = state.localLinks || [];
+      const localSocialLinks = state.localSocialLinks || [];
+
+      // 🚀 Send update requests
+      await fetch("/api/page", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName: state.displayName,
-          bio: state.bio,
-          profileImage: state.profileImage,
-          page: {
-            controls: {
-              alignment: state.page.controls.alignment,
-            },
-          },
-          socialLinks: state.socialLinks,
-        }),
+        body: JSON.stringify(localPage),
       });
 
-      if (!profileResponse.ok) {
-        const error = await profileResponse.text();
-        throw new Error(error || "Failed to update profile");
-      }
-
-      // Save links changes
-      const linksResponse = await fetch("/api/links", {
+      await fetch("/api/links", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state.links),
+        body: JSON.stringify(localLinks),
       });
 
-      if (!linksResponse.ok) {
-        const error = await linksResponse.text();
-        throw new Error(error || "Failed to update links");
-      }
+      await fetch("/api/social-links", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(localSocialLinks),
+      });
 
-      set({ hasUnsavedChanges: false });
+      // ✅ Clear local state correctly after saving
+      set((state) => ({
+        page: state.page ? { ...state.page, ...localPage } : null,
+        socialLinks: [...localSocialLinks],
+        links: [...localLinks],
+        localPage: null,
+        localSocialLinks: [],
+        localLinks: [],
+        hasUnsavedChanges: false,
+      }));
+
+      console.log("✅ Changes saved successfully!");
     } catch (error) {
-      console.error("Failed to save changes:", error);
-      throw error;
+      console.error("❌ Error saving changes:", error);
     }
   },
 
   // Reset Changes
   resetChanges: () => {
-    set({ hasUnsavedChanges: false });
+    set((state) => ({
+      localPage: state.page, // Reset to original page state
+      localSocialLinks: state.socialLinks,
+      localLinks: state.links,
+      hasUnsavedChanges: false,
+    }));
   },
 }));

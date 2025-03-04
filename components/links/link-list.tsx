@@ -117,6 +117,7 @@ export function LinkList({ links, alignment = "center" }: LinkListProps) {
     return <div className='text-center text-muted-foreground py-8'>No links added yet</div>;
   }
 
+  console.log("~======== LINKS:", links);
   return (
     <div className='space-y-4'>
       {links.map((link) => {

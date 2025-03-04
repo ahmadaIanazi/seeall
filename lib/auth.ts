@@ -11,13 +11,9 @@ if (!process.env.NEXTAUTH_SECRET) {
 
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(db) as never,
-  session: {
-    strategy: "jwt",
-  },
+  session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
-  pages: {
-    signIn: "/login",
-  },
+  pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -40,12 +36,10 @@ export const authOptions: AuthOptions = {
           return {
             id: user.id,
             username: user.username,
-            displayName: user.displayName ?? null,
-            bio: user.bio ?? null,
-            socialLinks: user.socialLinks ?? [],
+            page: user.page, // Ensure Page is included in the session
           };
         } catch (error) {
-          if (error instanceof Error) console.error("Auth error:", error.message);
+          console.error("❌ Auth error:", error.message);
           throw error;
         }
       },
@@ -56,9 +50,7 @@ export const authOptions: AuthOptions = {
       if (token) {
         session.user.id = token.id;
         session.user.username = token.username;
-        session.user.displayName = token.displayName ?? null;
-        session.user.bio = token.bio ?? null;
-        session.user.socialLinks = token.socialLinks ?? [];
+        session.user.page = token.page; // Ensure Page is included
       }
       return session;
     },
@@ -66,9 +58,7 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.id = user.id;
         token.username = user.username;
-        token.displayName = user.displayName ?? null;
-        token.bio = user.bio ?? null;
-        token.socialLinks = user.socialLinks ?? [];
+        token.page = user.page; // Ensure Page is stored in JWT token
       }
       return token;
     },

@@ -1,266 +1,118 @@
 import { db } from "./db";
+import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
 
+// ✅ Step 1: Extract table names from Prisma schema
+function getTablesFromSchema(): string[] {
+  const schemaPath = path.resolve("prisma/schema.prisma");
+
+  if (!fs.existsSync(schemaPath)) {
+    console.error("❌ Prisma schema file not found!");
+    return [];
+  }
+
+  const schema = fs.readFileSync(schemaPath, "utf-8");
+  const modelMatches = schema.match(/model (\w+) {/g);
+  return modelMatches ? modelMatches.map((match) => match.replace("model ", "").replace(" {", "")) : [];
+}
+
+// ✅ Step 2: Get existing tables in the database
+async function getExistingTables(): Promise<string[]> {
+  try {
+    const result: { tablename: string }[] = await db.$queryRaw`
+      SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+    `;
+    return result.map((row) => row.tablename);
+  } catch (error) {
+    console.error("❌ Failed to fetch existing tables:", error);
+    return [];
+  }
+}
+
+// ✅ Step 3: Drop outdated tables that don't match the schema
+async function dropOutdatedTables(schemaTables: string[], existingTables: string[]) {
+  const tablesToDrop = existingTables.filter((table) => !schemaTables.includes(table));
+
+  if (tablesToDrop.length === 0) {
+    console.log("✅ No outdated tables found.");
+    return;
+  }
+
+  console.log(`⚠️ Dropping outdated tables: ${tablesToDrop.join(", ")}`);
+
+  for (const table of tablesToDrop) {
+    try {
+      await db.$executeRawUnsafe(`DROP TABLE IF EXISTS "${table}" CASCADE`);
+      console.log(`🗑️ Dropped table: ${table}`);
+    } catch (error) {
+      console.error(`❌ Failed to drop table ${table}:`, error);
+    }
+  }
+}
+
+// ✅ Step 4: Check if Prisma migrations exist
+function hasMigrations(): boolean {
+  const migrationsPath = path.resolve("prisma/migrations");
+  return fs.existsSync(migrationsPath) && fs.readdirSync(migrationsPath).length > 0;
+}
+
+// ✅ Step 5: Check if the database contains any tables
+async function isDatabaseEmpty(): Promise<boolean> {
+  const existingTables = await getExistingTables();
+  return existingTables.length === 0;
+}
+
+// ✅ Step 6: Initialize the database
 export async function initDatabase() {
   try {
-    await db.$queryRaw`SELECT 1`;
+    console.log("🔍 Checking database schema...");
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "User" (
-        "id" TEXT NOT NULL,
-        "username" TEXT NOT NULL,
-        "password" TEXT NOT NULL,
-        "email" TEXT,
-        "emailVerified" TIMESTAMP(3),
-        "displayName" TEXT,
-        "bio" TEXT,
-        "profileImage" TEXT,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL,
-        CONSTRAINT "User_pkey" PRIMARY KEY ("id")
-      )
-    `;
-    await db.$executeRaw`
-      CREATE UNIQUE INDEX IF NOT EXISTS "User_username_key" ON "User"("username")
-    `;
-    await db.$executeRaw`
-      CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email") WHERE "email" IS NOT NULL
-    `;
+    const schemaTables = getTablesFromSchema();
+    const existingTables = await getExistingTables();
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "Page" (
-        "id" TEXT NOT NULL,
-        "userId" TEXT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL,
-        CONSTRAINT "Page_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "Page_userId_unique" UNIQUE ("userId"),
-        CONSTRAINT "Page_userId_fkey"
-          FOREIGN KEY ("userId") REFERENCES "User"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
+    if (schemaTables.length === 0) {
+      console.error("❌ No tables found in the Prisma schema!");
+      return;
+    }
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "Controls" (
-        "id" TEXT NOT NULL,
-        "pageId" TEXT NOT NULL,
-        "alignment" TEXT NOT NULL DEFAULT 'center',
-        "brandColor" TEXT,
-        "backgroundColor" TEXT,
-        "footer" TEXT,
-        "style" TEXT,
-        "font" TEXT,
-        "language" TEXT,
-        "multipleLanguage" BOOLEAN NOT NULL DEFAULT false,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "Controls_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "Controls_pageId_unique" UNIQUE ("pageId"),
-        CONSTRAINT "Controls_pageId_fkey"
-          FOREIGN KEY ("pageId") REFERENCES "Page"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
+    await dropOutdatedTables(schemaTables, existingTables);
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "Stats" (
-        "id" TEXT NOT NULL,
-        "pageId" TEXT NOT NULL,
-        "visits" INTEGER NOT NULL DEFAULT 0,
-        "clicks" INTEGER NOT NULL DEFAULT 0,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "Stats_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "Stats_pageId_unique" UNIQUE ("pageId"),
-        CONSTRAINT "Stats_pageId_fkey"
-          FOREIGN KEY ("pageId") REFERENCES "Page"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
+    console.log("🔄 Ensuring database is up to date...");
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "Category" (
-        "id" TEXT NOT NULL,
-        "pageId" TEXT NOT NULL,
-        "name" TEXT NOT NULL,
-        "image" TEXT,
-        "icon" TEXT,
-        "multiLanguage" JSONB,
-        "parentCategoryId" TEXT,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "Category_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "Category_pageId_fkey"
-          FOREIGN KEY ("pageId") REFERENCES "Page"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT "Category_parentCategoryId_fkey"
-          FOREIGN KEY ("parentCategoryId") REFERENCES "Category"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "Category_pageId_index" ON "Category"("pageId")
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "Category_parentCategoryId_index" ON "Category"("parentCategoryId")
-    `;
+    const migrationsExist = hasMigrations();
+    const dbIsEmpty = await isDatabaseEmpty();
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "Product" (
-        "id" TEXT NOT NULL,
-        "pageId" TEXT NOT NULL,
-        "categoryId" TEXT,
-        "name" TEXT NOT NULL,
-        "calories" INTEGER,
-        "allergies" TEXT,
-        "description" TEXT,
-        "multiLanguage" JSONB,
-        "price" DOUBLE PRECISION,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "Product_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "Product_pageId_fkey"
-          FOREIGN KEY ("pageId") REFERENCES "Page"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT "Product_categoryId_fkey"
-          FOREIGN KEY ("categoryId") REFERENCES "Category"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "Product_pageId_index" ON "Product"("pageId")
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "Product_categoryId_index" ON "Product"("categoryId")
-    `;
+    try {
+      if (!migrationsExist && !dbIsEmpty) {
+        console.warn("⚠️ No Prisma migrations found, but the database is NOT empty.");
+        console.log("⚠️ Running `prisma migrate dev --name init` to initialize migrations...");
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "Form" (
-        "id" TEXT NOT NULL,
-        "pageId" TEXT NOT NULL,
-        "name" TEXT NOT NULL,
-        "description" TEXT,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "Form_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "Form_pageId_fkey"
-          FOREIGN KEY ("pageId") REFERENCES "Page"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "Form_pageId_index" ON "Form"("pageId")
-    `;
+        execSync("pnpm prisma migrate dev --name init", { stdio: "inherit" });
+      } else {
+        console.log("🚀 Running Prisma Migrate Deploy...");
+        execSync("pnpm prisma migrate deploy", { stdio: "inherit" });
+      }
+    } catch (error) {
+      console.warn("⚠️ Migration error detected. Attempting `prisma db push` instead...");
+      execSync("pnpm prisma db push", { stdio: "inherit" });
+    }
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "FormField" (
-        "id" TEXT NOT NULL,
-        "formId" TEXT NOT NULL,
-        "label" TEXT NOT NULL,
-        "type" TEXT NOT NULL,
-        "required" BOOLEAN NOT NULL DEFAULT false,
-        "order" INTEGER NOT NULL DEFAULT 0,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "FormField_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "FormField_formId_fkey"
-          FOREIGN KEY ("formId") REFERENCES "Form"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "FormField_formId_index" ON "FormField"("formId")
-    `;
+    // 🌟 Reset if needed (only in development mode)
+    if (process.env.NODE_ENV !== "production") {
+      console.log("⚠️ Resetting database in development mode...");
+      execSync("pnpm prisma migrate reset --force", { stdio: "inherit" });
+    }
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "FormSubmission" (
-        "id" TEXT NOT NULL,
-        "formId" TEXT NOT NULL,
-        "data" JSONB NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "FormSubmission_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "FormSubmission_formId_fkey"
-          FOREIGN KEY ("formId") REFERENCES "Form"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "FormSubmission_formId_index" ON "FormSubmission"("formId")
-    `;
+    console.log("🔄 Running Prisma DB push...");
+    execSync("pnpm prisma db push", { stdio: "inherit" });
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "Comment" (
-        "id" TEXT NOT NULL,
-        "pageId" TEXT,
-        "productId" TEXT,
-        "userId" TEXT,
-        "content" TEXT NOT NULL,
-        "rating" DOUBLE PRECISION,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "Comment_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "Comment_pageId_fkey"
-          FOREIGN KEY ("pageId") REFERENCES "Page"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT "Comment_productId_fkey"
-          FOREIGN KEY ("productId") REFERENCES "Product"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT "Comment_userId_fkey"
-          FOREIGN KEY ("userId") REFERENCES "User"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "Comment_pageId_index" ON "Comment"("pageId")
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "Comment_productId_index" ON "Comment"("productId")
-    `;
-    await db.$executeRaw`
-      CREATE INDEX IF NOT EXISTS "Comment_userId_index" ON "Comment"("userId")
-    `;
+    console.log("🔧 Generating Prisma Client...");
+    execSync("pnpm prisma generate", { stdio: "inherit" });
 
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "Link" (
-        "id" TEXT NOT NULL,
-        "type" TEXT NOT NULL DEFAULT 'link',
-        "title" TEXT NOT NULL,
-        "url" TEXT,
-        "image" TEXT,
-        "description" TEXT,
-        "mapLocation" JSONB,
-        "order" INTEGER NOT NULL DEFAULT 0,
-        "userId" TEXT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "Link_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "Link_userId_fkey"
-          FOREIGN KEY ("userId") REFERENCES "User"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
-
-    await db.$executeRaw`
-      CREATE TABLE IF NOT EXISTS "SocialLink" (
-        "id" TEXT NOT NULL,
-        "platform" TEXT NOT NULL,
-        "url" TEXT NOT NULL,
-        "userId" TEXT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "SocialLink_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "SocialLink_userId_fkey"
-          FOREIGN KEY ("userId") REFERENCES "User"("id")
-          ON DELETE CASCADE ON UPDATE CASCADE
-      )
-    `;
-
-    console.log("Database initialization completed");
+    console.log("✅ Database is fully initialized!");
   } catch (error) {
-    console.error("Database initialization failed:", error);
+    console.error("❌ Database initialization failed:", error);
     throw error;
-  } finally {
-    await db.$disconnect();
   }
 }

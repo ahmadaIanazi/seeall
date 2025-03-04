@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-// Define the schema for the incoming request body
+// Define schema for incoming request body
 const reorderSchema = z.array(
   z.object({
     id: z.string(),
@@ -14,34 +14,32 @@ const reorderSchema = z.array(
 
 export async function PUT(req: NextRequest) {
   try {
-    // Check if the user is authenticated
     const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
+    if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
-    // Parse and validate the request body
+    const page = await db.page.findUnique({
+      where: { userId: session.user.id },
+    });
+
+    if (!page) return new NextResponse("Page not found", { status: 404 });
+
+    // Parse and validate request body
     const json = await req.json();
     const links = reorderSchema.parse(json);
 
     // Update each link's order in the database
-    const updatePromises = links.map((link) =>
-      db.link.update({
-        where: { id: link.id },
-        data: { order: link.order },
-      })
+    await db.$transaction(
+      links.map((link) =>
+        db.link.update({
+          where: { id: link.id, pageId: page.id },
+          data: { order: link.order },
+        })
+      )
     );
-
-    // Execute all update operations
-    await Promise.all(updatePromises);
 
     return NextResponse.json({ message: "Links reordered successfully" });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ message: error.errors[0].message }, { status: 400 });
-    }
-
     console.error("Error reordering links:", error);
-    return NextResponse.json({ message: "Something went wrong" }, { status: 500 });
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
-import { hash } from "bcryptjs";
+// app/api/auth/register/route.ts
+import { createUser } from "@/lib/data/user";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -17,34 +17,21 @@ export async function POST(req: Request) {
     const json = await req.json();
     const body = registerSchema.parse(json);
 
-    // Check if user exists
-    const existingUser = await db.user.findUnique({
-      where: { username: body.username },
-    });
+    // Check if the user exists
+    const existingUser = await createUser({ username: body.username, password: body.password });
 
-    if (existingUser) {
+    if (!existingUser) {
       return new NextResponse("Username already taken", { status: 409 });
     }
 
-    const hashedPassword = await hash(body.password, 10);
-
-    // Create user without email
-    const user = await db.user.create({
-      data: {
-        username: body.username,
-        password: hashedPassword,
-        // Don't include email field if it's not provided
-      },
-    });
-
     return NextResponse.json({
       user: {
-        username: user.username,
-        id: user.id,
+        username: existingUser.username,
+        id: existingUser.id,
       },
     });
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error("❌ Error creating user:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

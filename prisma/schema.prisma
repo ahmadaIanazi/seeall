@@ -1,64 +1,78 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("POSTGRES_PRISMA_URL")
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-1.0.x"]
-}
-
 model User {
   id            String    @id @default(cuid())
   username      String    @unique
   password      String
-  email         String?   @unique
+  email         String?
   emailVerified DateTime?
-  displayName   String?
-  bio           String?
-  profileImage  String?
-  page          Page?     @relation("UserPage")
-  links         Link[]
-  socialLinks   SocialLink[]
-  comments      Comment[]
   createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  updatedAt     DateTime  @default(now())
+  page          Page?
 }
 
 model Page {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation("UserPage", fields: [userId], references: [id], onDelete: Cascade)
-  controls  Controls?
-  stats     Stats?
-  products  Product[]
-  categories Category[]
-  forms     Form[]
-  comments  Comment[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String       @id @default(cuid())
+  userId           String       @unique @map("userId")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @default(now())
+  alignment        String       @default("center")
+  backgroundColor  String       @default("#FFFFFF")
+  bio              String?
+  brandColor       String       @default("#000000")
+  font             String       @default("default")
+  footer           String?
+  language         String       @default("en")
+  multipleLanguage Boolean      @default(false)
+  pageImage        String?
+  pageName         String?
+  style            String?
+  categories       Category[]
+  comments         Comment[]
+  forms            Form[]
+  links            Link[]
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products         Product[]
+  socialLinks      SocialLink[]
+  stats            Stats?
 }
 
-model Controls {
-  id               String   @id @default(cuid())
-  pageId           String   @unique
-  alignment        String   @default("center")
-  brandColor       String?
-  backgroundColor  String?
-  footer           String?
-  style            String?
-  font             String?
-  language         String?
-  multipleLanguage Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @default(now())
-  page             Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+model Link {
+  id              String   @id @default(cuid())
+  type            String   @default("link")
+  title           String
+  url             String?
+  image           String?
+  description     String?
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+  pageId          String
+  page            Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model SocialLink {
+  id        String   @id @default(cuid())
+  platform  String
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
 }
 
 model Stats {
   id        String   @id @default(cuid())
-  pageId    String   @unique
+  pageId    String   @unique(map: "Stats_pageId_unique")
   visits    Int      @default(0)
   clicks    Int      @default(0)
   createdAt DateTime @default(now())
@@ -74,15 +88,15 @@ model Category {
   icon             String?
   multiLanguage    Json?
   parentCategoryId String?
-  parentCategory   Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
-  subCategories    Category[] @relation("CategoryHierarchy")
-  products         Product[]
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @default(now())
   page             Page       @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  parentCategory   Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: Cascade)
+  subCategories    Category[] @relation("CategoryHierarchy")
+  products         Product[]
 
-  @@index([pageId])
-  @@index([parentCategoryId])
+  @@index([pageId], map: "Category_pageId_index")
+  @@index([parentCategoryId], map: "Category_parentCategoryId_index")
 }
 
 model Product {
@@ -97,26 +111,26 @@ model Product {
   price         Float?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now())
-  page          Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  category      Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   comments      Comment[]
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  page          Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
-  @@index([pageId])
-  @@index([categoryId])
+  @@index([categoryId], map: "Product_categoryId_index")
+  @@index([pageId], map: "Product_pageId_index")
 }
 
 model Form {
-  id          String          @id @default(cuid())
+  id          String           @id @default(cuid())
   pageId      String
   name        String
   description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now())
+  page        Page             @relation(fields: [pageId], references: [id], onDelete: Cascade)
   fields      FormField[]
   submissions FormSubmission[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @default(now())
-  page        Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
-  @@index([pageId])
+  @@index([pageId], map: "Form_pageId_index")
 }
 
 model FormField {
@@ -130,7 +144,7 @@ model FormField {
   updatedAt DateTime @default(now())
   form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
 
-  @@index([formId])
+  @@index([formId], map: "FormField_formId_index")
 }
 
 model FormSubmission {
@@ -141,52 +155,20 @@ model FormSubmission {
   updatedAt DateTime @default(now())
   form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
 
-  @@index([formId])
+  @@index([formId], map: "FormSubmission_formId_index")
 }
 
 model Comment {
   id        String   @id @default(cuid())
   pageId    String?
   productId String?
-  userId    String?
   content   String
   rating    Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
   page      Page?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
   product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([pageId])
-  @@index([productId])
-  @@index([userId])
-}
-
-model Link {
-  id          String   @id @default(cuid())
-  userId      String
-  type        String   @default("link")
-  title       String
-  url         String?
-  image       String?
-  description String?
-  mapLocation Json?
-  order       Int      @default(0)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
-
-  @@index([userId])
-}
-
-model SocialLink {
-  id        String   @id @default(cuid())
-  userId    String
-  platform  String
-  url       String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-
-  @@index([userId])
+  @@index([pageId], map: "Comment_pageId_index")
+  @@index([productId], map: "Comment_productId_index")
 }

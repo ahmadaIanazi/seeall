@@ -5,8 +5,14 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useDashboardStore } from "@/lib/store/dashboard";
 import { cn } from "@/lib/utils";
 
-export function Toolbar() {
-  const { alignment, setAlignment } = useDashboardStore();
+export function PageToolbar() {
+  const { localPage, setPage } = useDashboardStore();
+  const alignment = localPage?.alignment || "center";
+
+  function handleAlignmentChange(value: string | null): void {
+    if (!value) return;
+    setPage({ alignment: value });
+  }
 
   return (
     <div
@@ -18,7 +24,7 @@ export function Toolbar() {
     >
       <div className='flex items-center gap-2'>
         <span className='text-sm font-medium text-muted-foreground'>Align</span>
-        <ToggleGroup type='single' value={alignment} onValueChange={(value) => value && setAlignment(value)} className='flex gap-1'>
+        <ToggleGroup type='single' value={alignment} onValueChange={handleAlignmentChange} className='flex gap-1'>
           <ToggleGroupItem value='left' aria-label='Left align'>
             <AlignLeft className='h-4 w-4' />
           </ToggleGroupItem>

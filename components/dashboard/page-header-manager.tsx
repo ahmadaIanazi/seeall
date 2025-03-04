@@ -9,25 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDashboardStore } from "@/lib/store/dashboard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { SocialLink } from "@prisma/client";
 
-interface ProfileSettingsProps {
-  initialData: {
-    displayName: string | null;
+interface PageHeaderManagerProps {
+  headerData: {
+    pageName: string | null;
     bio: string | null;
-    profileImage: string | null;
-    page: {
-      controls: {
-        alignment: string;
-      } | null;
-    } | null;
-    socialLinks: Array<{
-      platform: string;
-      url: string;
-    }>;
+    pageImage: string | null;
+    socialLinks: SocialLink[];
   };
 }
 
-// Add type for social platforms
+// Social Platforms
 type SocialPlatform = "twitter" | "github" | "linkedin" | "instagram" | "youtube";
 
 const SOCIAL_PLATFORMS: Record<SocialPlatform, { label: string; placeholder: string }> = {
@@ -36,75 +29,66 @@ const SOCIAL_PLATFORMS: Record<SocialPlatform, { label: string; placeholder: str
   linkedin: { label: "LinkedIn", placeholder: "https://linkedin.com/in/username" },
   instagram: { label: "Instagram", placeholder: "https://instagram.com/username" },
   youtube: { label: "YouTube", placeholder: "https://youtube.com/@username" },
-} as const;
+};
 
-export function ProfileSettings({ initialData }: ProfileSettingsProps) {
-  const { setProfile, setSocialLinks } = useDashboardStore();
-  const [displayName, setDisplayName] = useState(initialData.displayName);
-  const [bio, setBio] = useState(initialData.bio);
-  const [profileImage, setProfileImage] = useState(initialData.profileImage);
-  const [socialLinks, setSocialLinksLocal] = useState(initialData.socialLinks);
+export function PageHeaderManager({ headerData }: PageHeaderManagerProps) {
+  const { setPage, setSocialLinks } = useDashboardStore();
+  const [pageName, setPageName] = useState(headerData.pageName);
+  const [bio, setBio] = useState(headerData.bio);
+  const [pageImage, setPageImage] = useState(headerData.pageImage);
+  const [socialLinks, setSocialLinksLocal] = useState<SocialLink[]>(headerData.socialLinks);
   const [newPlatform, setNewPlatform] = useState<string | null>(null);
   const [newUrl, setNewUrl] = useState("");
   const [showSocialForm, setShowSocialForm] = useState(false);
-  const alignment = initialData.page?.controls?.alignment || "center";
 
-  // Initialize store with initial data
+  // Initialize Zustand store with initial data
   useEffect(() => {
-    setProfile({
-      displayName: initialData.displayName,
-      bio: initialData.bio,
-      profileImage: initialData.profileImage,
-      alignment,
-    });
-    setSocialLinks(initialData.socialLinks);
-  }, [initialData, setProfile, setSocialLinks, alignment]);
+    setPage({ pageName, bio, pageImage });
+    setSocialLinks(socialLinks);
+  }, []);
 
-  // Update store when local state changes
+  // Sync state changes to Zustand store
   useEffect(() => {
-    setProfile({
-      displayName,
-      bio,
-      profileImage,
-      alignment,
-    });
-  }, [displayName, bio, profileImage, setProfile, alignment]);
+    setPage({ pageName, bio, pageImage });
+  }, [pageName, bio, pageImage]);
 
   useEffect(() => {
     setSocialLinks(socialLinks);
-  }, [socialLinks, setSocialLinks]);
+  }, [socialLinks]);
 
   function addSocialLink() {
     if (!newPlatform || !newUrl) return;
-    setSocialLinksLocal([...socialLinks, { platform: newPlatform, url: newUrl }]);
+    setSocialLinksLocal([...socialLinks, { id: crypto.randomUUID(), platform: newPlatform, url: newUrl, pageId: "", createdAt: new Date(), updatedAt: new Date() }]);
     setNewPlatform(null);
     setNewUrl("");
   }
 
   function removeSocialLink(id: string) {
-    setSocialLinksLocal(socialLinks.filter((link) => link.platform !== id));
+    setSocialLinksLocal(socialLinks.filter((link) => link.id !== id));
   }
 
   return (
     <div className='space-y-6'>
       <div className='space-y-4'>
-        {/* Profile Image Upload */}
+        {/* Page Image Upload */}
         <div>
-          <p className='text-sm font-medium mb-2'>Profile Image</p>
-          <ImageUpload value={profileImage} onChange={(value) => setProfileImage(value)} className='w-32 h-32 mx-auto' />
-          <p className='text-sm text-muted-foreground mt-1 text-center'>Upload your profile image (optional)</p>
+          <p className='text-sm font-medium mb-2'>Page Image</p>
+          <ImageUpload value={pageImage} onChange={setPageImage} className='w-32 h-32 mx-auto' />
+          <p className='text-sm text-muted-foreground mt-1 text-center'>Upload a page image (optional)</p>
         </div>
 
+        {/* Page Name */}
         <div>
-          <Input value={displayName || ""} onChange={(e) => setDisplayName(e.target.value)} placeholder='Display Name (optional)' />
-          <p className='text-sm text-muted-foreground mt-1'>This will be shown instead of your username</p>
+          <Input value={pageName || ""} onChange={(e) => setPageName(e.target.value)} placeholder='Page Name (optional)' />
+          <p className='text-sm text-muted-foreground mt-1'>This will be the name displayed on your page</p>
         </div>
 
+        {/* Bio */}
         <div>
           <Textarea value={bio || ""} onChange={(e) => setBio(e.target.value)} placeholder='Bio (optional)' rows={3} />
         </div>
 
-        {/* Social Links Section */}
+        {/* Social Links */}
         <div className='space-y-2'>
           <div className='flex items-center justify-between'>
             <h3 className='text-sm font-medium'>Social Links</h3>
@@ -115,9 +99,9 @@ export function ProfileSettings({ initialData }: ProfileSettingsProps) {
 
           <div className='flex flex-wrap gap-2'>
             {socialLinks.map((link) => (
-              <div key={link.platform} className='flex items-center gap-2 bg-muted rounded-lg px-3 py-2'>
-                <span className='text-sm'>{SOCIAL_PLATFORMS[link.platform].label}</span>
-                <Button type='button' variant='ghost' size='icon' className='h-4 w-4' onClick={() => removeSocialLink(link.platform)}>
+              <div key={link.id} className='flex items-center gap-2 bg-muted rounded-lg px-3 py-2'>
+                <span className='text-sm'>{SOCIAL_PLATFORMS[link.platform as SocialPlatform]?.label || link.platform}</span>
+                <Button type='button' variant='ghost' size='icon' className='h-4 w-4' onClick={() => removeSocialLink(link.id)}>
                   <X className='h-3 w-3' />
                 </Button>
               </div>
@@ -126,6 +110,7 @@ export function ProfileSettings({ initialData }: ProfileSettingsProps) {
         </div>
       </div>
 
+      {/* Add Social Link */}
       <Sheet open={showSocialForm} onOpenChange={setShowSocialForm}>
         <SheetContent side='bottom'>
           <SheetHeader>
@@ -133,7 +118,7 @@ export function ProfileSettings({ initialData }: ProfileSettingsProps) {
           </SheetHeader>
           <div className='p-6 space-y-4'>
             <div className='flex flex-col gap-4'>
-              <Select value={newPlatform || ""} onValueChange={(value) => setNewPlatform(value)}>
+              <Select value={newPlatform || ""} onValueChange={setNewPlatform}>
                 <SelectTrigger>
                   <SelectValue placeholder='Select platform' />
                 </SelectTrigger>
@@ -146,7 +131,11 @@ export function ProfileSettings({ initialData }: ProfileSettingsProps) {
                 </SelectContent>
               </Select>
 
-              <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder={newPlatform ? SOCIAL_PLATFORMS[newPlatform].placeholder : "Enter URL"} />
+              <Input
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                placeholder={newPlatform ? SOCIAL_PLATFORMS[newPlatform as SocialPlatform]?.placeholder : "Enter URL"}
+              />
 
               <Button
                 onClick={() => {
