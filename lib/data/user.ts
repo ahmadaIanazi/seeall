@@ -8,9 +8,7 @@ export async function getUserByUsername(username: string) {
       include: {
         page: {
           include: {
-            socialLinks: true,
-            links: { orderBy: { order: "asc" } },
-            stats: true,
+            contents: { orderBy: { order: "asc" } },
           },
         },
       },
@@ -36,17 +34,17 @@ export async function createUser({ username, password }: { username: string; pas
         data: {
           userId: user.id,
           pageName: username,
-          bio: null,
-          pageImage: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
           alignment: "center",
-          brandColor: "#000000",
           backgroundColor: "#FFFFFF",
+          brandColor: "#000000",
           font: "default",
           language: "en",
           multipleLanguage: false,
-          socialLinks: { create: [] }, // Empty initially
-          links: { create: [] }, // Empty initially
-          stats: { create: {} }, // Create stats entry
+          live: true,
+          showCategories: true,
+          contents: { create: [] }, // Empty initially
         },
       });
 
@@ -56,9 +54,7 @@ export async function createUser({ username, password }: { username: string; pas
         include: {
           page: {
             include: {
-              socialLinks: true,
-              links: { orderBy: { order: "asc" } },
-              stats: true,
+              contents: { orderBy: { order: "asc" } },
             },
           },
         },

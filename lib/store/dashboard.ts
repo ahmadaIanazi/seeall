@@ -1,15 +1,11 @@
 import { create } from "zustand";
-import { Page, SocialLink, Link } from "@prisma/client";
+import { Page, Content } from "@prisma/client";
 
 interface DashboardState {
   // Page State
   page: Page | Partial<Page> | null;
   pageId: string | null;
-  socialLinks: SocialLink[];
-  links: Link[];
-
-  // Local Edits
-  localSocialLinks: SocialLink[];
+  contents: Content[];
 
   // Track Changes
   hasUnsavedChanges: boolean;
@@ -17,27 +13,24 @@ interface DashboardState {
   // Actions
   setPage: (updates: Partial<Page>) => void;
   setPageId: (pageId: string) => void;
-  setSocialLinks: (links: SocialLink[]) => void;
 
-  setLinks: (links: Link[]) => void;
-  addLink: (link: Link) => void;
-  removeLink: (id: string) => void;
-  reorderLinks: (links: Link[]) => void;
+  setContents: (contents: Content[]) => void;
+  addContent: (content: Content) => void;
+  removeContent: (id: string) => void;
+  reorderContents: (contents: Content[]) => void;
 
-  updateLink: (link: Link) => void;
+  updateContent: (content: Content) => void;
 
   // Save Changes
   saveChanges: () => Promise<void>;
-  resetChanges: () => void;
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
   // Initial State
   page: null,
   pageId: null,
-  socialLinks: [],
-  links: [],
-  localSocialLinks: [],
+
+  contents: [],
 
   hasUnsavedChanges: false,
 
@@ -59,20 +52,17 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
 
   setPageId: (pageId: string) => set({ pageId }),
-  setSocialLinks: (links) => {
-    set({ localSocialLinks: links, hasUnsavedChanges: true });
-  },
 
-  updateLink: (link) => {
+  updateContent: (content) => {
     set((state) => ({
-      links: state.links.map((l) => (l.id === link.id ? link : l)),
+      contents: state.contents.map((l) => (l.id === content.id ? content : l)),
       hasUnsavedChanges: true,
     }));
   },
-  setLinks: (links) => set({ links, hasUnsavedChanges: true }),
-  addLink: (link) => set((state) => ({ links: [...state.links, link], hasUnsavedChanges: true })),
-  removeLink: (id) => set((state) => ({ links: state.links.filter((l) => l.id !== id), hasUnsavedChanges: true })),
-  reorderLinks: (links) => set({ links, hasUnsavedChanges: true }),
+  setContents: (contents) => set({ contents, hasUnsavedChanges: true }),
+  addContent: (content) => set((state) => ({ contents: [...state.contents, content], hasUnsavedChanges: true })),
+  removeContent: (id) => set((state) => ({ contents: state.contents.filter((l) => l.id !== id), hasUnsavedChanges: true })),
+  reorderContents: (contents) => set({ contents, hasUnsavedChanges: true }),
 
   // Save Changes
   saveChanges: async () => {
@@ -84,12 +74,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         console.error("No page ID found. Cannot save changes.");
         return;
       }
-      console.log("saveChanges called with state:", state.page, state.links);
+      console.log("saveChanges called with state:", state.page, state.contents);
 
-      // Ensure localLinks & localPage are always defined
+      // Ensure localContents & localPage are always defined
       const updatedPage = state.page || {};
-      const updatedLinks = state.links || [];
-      // const localSocialLinks = state.localSocialLinks || [];
+      const updatedContents = state.contents || [];
 
       // 🚀 Send update requests
       await fetch("/api/page", {
@@ -98,25 +87,17 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         body: JSON.stringify(updatedPage),
       });
 
-      // Updated Links call with /api/links/[pageId]/route.ts
-      await fetch(`/api/links/${pageId}`, {
+      // Updated Contents call with /api/contents/[pageId]/route.ts
+      await fetch(`/api/contents/${pageId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedLinks),
+        body: JSON.stringify(updatedContents),
       });
-
-      // await fetch("/api/social-links", {
-      //   method: "PUT",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(localSocialLinks),
-      // });
 
       // ✅ Clear local state correctly after saving
       set((state) => ({
         page: state.page ? { ...state.page, ...updatedPage } : null,
-        // socialLinks: [...localSocialLinks],
-        links: [...updatedLinks],
-        localSocialLinks: [],
+        contents: [...updatedContents],
         hasUnsavedChanges: false,
       }));
 
@@ -124,13 +105,5 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     } catch (error) {
       console.error("❌ Error saving changes:", error);
     }
-  },
-
-  // Reset Changes
-  resetChanges: () => {
-    set((state) => ({
-      localSocialLinks: state.socialLinks,
-      hasUnsavedChanges: false,
-    }));
   },
 }));

@@ -1,15 +1,18 @@
 "use client";
-import { ImageUpload } from "@/components/ui/image-upload";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useDashboardStore } from "@/lib/store/dashboard";
 import { useEffect, useState } from "react";
+import { ImageUpload } from "../images/image-upload";
+import SectionsList from "./sections-list";
 
 export function PageHeaderManager({ pageId }: { pageId: string }) {
-  const { setPage } = useDashboardStore();
+  const { page, setPage } = useDashboardStore();
   const [pageName, setPageName] = useState("");
   const [bio, setBio] = useState("");
   const [pageImage, setPageImage] = useState("");
+
+  const alignment = page?.alignment ? page.alignment : "center";
 
   useEffect(() => {
     async function fetchHeader() {
@@ -35,20 +38,12 @@ export function PageHeaderManager({ pageId }: { pageId: string }) {
   return (
     <div className='space-y-6'>
       <div className='space-y-4'>
-        <div>
-          <p className='text-sm font-medium mb-2'>Page Image</p>
-          <ImageUpload value={pageImage} onChange={setPageImage} className='w-32 h-32 mx-auto' />
-          <p className='text-sm text-muted-foreground mt-1 text-center'>Upload a page image (optional)</p>
+        <div className={`items-${alignment}`}>
+          <ImageUpload value={pageImage} onChange={setPageImage} />
         </div>
-
-        <div>
-          <Input value={pageName} onChange={(e) => setPageName(e.target.value)} placeholder='Page Name (optional)' />
-          <p className='text-sm text-muted-foreground mt-1'>This will be the name displayed on your page</p>
-        </div>
-
-        <div>
-          <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Bio (optional)' rows={3} />
-        </div>
+        <Input className={`text-2xl text-${alignment} border-dashed`} value={pageName} onChange={(e) => setPageName(e.target.value)} placeholder='Page Name (optional)' />
+        <Textarea className={`text-${alignment} border-dashed`} value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Bio (optional)' rows={3} />
+        {/* <SectionsList /> */}
       </div>
     </div>
   );

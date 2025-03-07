@@ -2,44 +2,63 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ContentType } from "@/types/content-type";
 import { Link, MapPin, Image, Heading } from "lucide-react";
 
-const LINK_TYPES = [
+const CONTENT_TYPES = [
   {
-    id: "link",
+    id: ContentType.LINK,
     icon: Link,
     label: "Link",
     description: "Add a simple link to any URL",
   },
   {
-    id: "image",
+    id: ContentType.IMAGE,
     icon: Image,
-    label: "Image Link",
+    label: "Image",
     description: "Add a link with a custom image",
   },
   {
-    id: "map",
+    id: ContentType.ICON,
     icon: MapPin,
-    label: "Map Location",
+    label: "Icon",
     description: "Add a Google Maps location",
   },
   {
-    id: "header",
+    id: ContentType.CATEGORY,
     icon: Heading,
-    label: "Section Header",
+    label: "Section",
     description: "Add a header to organize your links",
+  },
+  {
+    id: ContentType.PRODUCT,
+    icon: Heading,
+    label: "Product",
+    description: "Add a product to with image and prices.",
+  },
+  {
+    id: ContentType.SOCIAL,
+    icon: Heading,
+    label: "Social Link",
+    description: "Add a header to organize your links",
+  },
+  {
+    id: ContentType.BLANK,
+    icon: Heading,
+    label: "Blank",
+    description: "Start with a blank component.",
   },
 ] as const;
 
-interface LinkTypeSelectorProps {
+interface ContentTypeSelectorProps {
   onSelect: (type: string) => void;
   onClose: () => void;
 }
 
-export function LinkTypeSelector({ onSelect, onClose }: LinkTypeSelectorProps) {
+export function ContentTypeSelector({ onSelect, onClose }: ContentTypeSelectorProps) {
   return (
     <Card className='p-4 grid grid-cols-1 sm:grid-cols-2 gap-4'>
-      {LINK_TYPES.map((type) => (
+      {CONTENT_TYPES.map((type) => (
         <Button
           key={type.id}
           variant='outline'

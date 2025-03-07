@@ -1,5 +1,4 @@
 ☐ Make a clear QR at the bottom, and an indicator to download it. (Indicator shows only when scrolling for couple of seconds then it disappears.)
-☐ Make a Menu Management as "username/menu" this is an extra feature that it requires its own tools and management.
 ☐ Sections and Notes and dividers to be draggable as well to divide links.
 ☐ Maps to simply fetch main map city, location .. etc and a viewable port.
 ☐ Adding alignment feature for the page, center, left, right
@@ -9,4 +8,25 @@
   ☐ Style
   ☐ Color
   ☐ Menu, or Links or Both adding features.
-☐ Restaurant Menu, and simple view page for menu, categories and details..etc
+☐ Make categories superior to all contents below it until another category.
+☐ Make sections inferior to categories but superior to other content.
+☐ Make adding categories in the Add New, and ability to show or hide categories from top Horizontal view.
+☐ Make Everything drag and drop / hide and show / delete / edit
+☐ Toolbar should have arrow move to top.
+☐ Toolbar should have Theme selection (style)
+☐ Toolbar should have Font selection
+☐ Content should have an icon indicator for Link / or not clickable.
+☐ Nav Bar should have the QR code button to download. (It should open up a page to download / Share)
+☐ Nav Bar should have following pages ( STATS | BILLING | FREE badge )
+☐ Paid users, can add more contents such as categories, sections, products, images, and remove Company Footer.
+☐ Paid users can use AI images for their MENU, and the app will create the necessary content for them.
+☐ If you click on an Image you enlarge the image. SIMPLY !
+
+☐ AUTH: Username (unique) / Password. 
+☐ PAGE: Each username starts with a page /username <- Default Page URL
+☐ PAGE Header: Each page contains header such as "PageName, PageImage, PageBio, SocialLinks, Show / hide Categories horizontal ".
+☐ PAGE Content: Each page contains multiple content that are drag & drop, Show / Hide, Delete / Edit, and to add the following:-
+  - Link: Links contains a URL (required), Title, Description, Image, Icon .. etc (optional)
+  - Image: Image contains a Binary image (required), URL, Title, Description .. etc (optional)
+  - Category: Categories contains a Title (required), description, image, icon .. etc (optional)
+  - Product: Products contains a Name (required), Price, Image, Description, Currency, Calories, Allergies Icons, List of text - prices for additional. 

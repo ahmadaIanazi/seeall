@@ -1,116 +1,97 @@
 "use client";
+import { useEffect, useState } from "react";
+import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ImageUpload } from "@/components/ui/image-upload";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Plus } from "lucide-react";
+import { Content } from "@prisma/client";
 import { useDashboardStore } from "@/lib/store/dashboard";
-import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Link } from "@prisma/client";
-import { GripVertical, Heading, Image as ImageIcon, Link as LinkIcon, MapPin, Plus, Trash2 } from "lucide-react";
-import Image from "next/image";
-import { useEffect, useState } from "react";
-import { LinkTypeSelector } from "./link-type-selector";
-
-function getLinkIcon(type: string) {
-  if (type === "link") return <LinkIcon className='h-4 w-4' />;
-  if (type === "image") return <ImageIcon className='h-4 w-4' />;
-  if (type === "map") return <MapPin className='h-4 w-4' />;
-  if (type === "header") return <Heading className='h-4 w-4' />;
-  return <LinkIcon className='h-4 w-4' />;
-}
-
-function SortableItem({ link, onDelete }: { link: Link; onDelete: (id: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: link.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-  return (
-    <div ref={setNodeRef} style={style} className='flex items-center gap-4 rounded-lg border p-4'>
-      <div {...attributes} {...listeners} className='cursor-move'>
-        <GripVertical className='h-5 w-5 text-muted-foreground' />
-      </div>
-      <div className='flex-1 min-w-0'>
-        <div className='flex items-center gap-2'>
-          {getLinkIcon(link.type)}
-          <p className='font-medium truncate'>{link.title}</p>
-        </div>
-        {link.type === "image" && link.image && (
-          <div className='relative w-full h-32 mt-2'>
-            <Image src={link.image} alt={link.title} fill className='object-cover rounded-lg' />
-          </div>
-        )}
-        {link.type !== "header" && <p className='text-sm text-muted-foreground truncate'>{link.type === "map" ? "Map Location" : link.url}</p>}
-      </div>
-      <Button variant='ghost' size='icon' onClick={() => onDelete(link.id)}>
-        <Trash2 className='h-4 w-4' />
-      </Button>
-    </div>
-  );
-}
+import { ContentTypeSelector } from "./content-type-selector";
+import { ContentType } from "@/types/content-type";
+import { ContentForm } from "./content-form";
+import { ContentSortableItem } from "./content-sortable-items";
 
 export function PageContentManager({ pageId }: { pageId: string }) {
-  const { links, setLinks, addLink, removeLink, reorderLinks } = useDashboardStore();
-  const [isAddingLink, setIsAddingLink] = useState(false);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const { contents, setContents, addContent, removeContent, reorderContents } = useDashboardStore();
+  const [isAddingContent, setIsAddingContent] = useState(false);
+  const [selectedType, setSelectedType] = useState<ContentType | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    async function fetchLinks() {
+    async function fetchContents() {
       try {
-        const res = await fetch(`/api/links/${pageId}`);
-        if (!res.ok) throw new Error("Failed to fetch links");
-        const data: Link[] = await res.json();
-        setLinks(data);
+        const res = await fetch(`/api/contents/${pageId}`);
+        if (!res.ok) throw new Error("Failed to fetch contents");
+        const data: Content[] = await res.json();
+        setContents(data);
       } catch (error) {
         console.error(error);
       }
     }
-    fetchLinks();
-  }, [pageId, setLinks]);
+    fetchContents();
+  }, [pageId, setContents]);
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  function handleAddLink(formData: FormData) {
-    const title = formData.get("title") as string;
-    if (!title) return;
-    addLink({
+  function handleAddContent(formData: FormData) {
+    let parentContentId = formData.get("parentContentId") as string;
+    if (parentContentId === "none") parentContentId = "";
+
+    const newItem = {
       id: crypto.randomUUID(),
-      type: selectedType || "link",
-      title,
+      type: selectedType || ContentType.BLANK,
+      title: (formData.get("title") as string) || null,
       url: (formData.get("url") as string) || null,
       image: (formData.get("image") as string) || null,
-      description: null,
-      order: links.length,
+      icon: (formData.get("icon") as string) || null,
+      description: (formData.get("description") as string) || null,
+      name: (formData.get("name") as string) || null,
+      currency: (formData.get("currency") as string) || null,
+      parentContentId: parentContentId || null,
       pageId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    } as Content;
+
+    const price = formData.get("price");
+    if (price) newItem.price = parseFloat(price as string);
+
+    const multiLanguage = formData.get("multiLanguage");
+    if (multiLanguage) {
+      try {
+        newItem.multiLanguage = JSON.parse(multiLanguage as string);
+      } catch {
+        newItem.multiLanguage = {};
+      }
+    }
+
+    addContent(newItem);
     setShowForm(false);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = links.findIndex((i) => i.id === active.id);
-      const newIndex = links.findIndex((i) => i.id === over.id);
-      const reordered = arrayMove(links, oldIndex, newIndex).map((item, index) => ({ ...item, order: index }));
-      reorderLinks(reordered);
+      const oldIndex = contents.findIndex((i) => i.id === active.id);
+      const newIndex = contents.findIndex((i) => i.id === over.id);
+      const reordered = arrayMove(contents, oldIndex, newIndex).map((item, index) => ({ ...item, order: index }));
+      reorderContents(reordered);
     }
   }
 
   return (
-    <div className='space-y-6'>
+    <div className='flex flex-col gap-4'>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={links.map((link) => link.id)} strategy={verticalListSortingStrategy}>
-          {links.map((link) => (
-            <SortableItem key={link.id} link={link} onDelete={removeLink} />
+        <SortableContext items={contents.map((content) => content.id)} strategy={verticalListSortingStrategy}>
+          {contents.map((content) => (
+            <ContentSortableItem key={content.id} content={content} onDelete={removeContent} />
           ))}
         </SortableContext>
       </DndContext>
 
-      <Dialog open={isAddingLink} onOpenChange={setIsAddingLink}>
+      <Dialog open={isAddingContent} onOpenChange={setIsAddingContent}>
         <DialogTrigger asChild>
           <Button className='w-full' variant='outline'>
             <Plus className='mr-2 h-4 w-4' />
@@ -119,13 +100,13 @@ export function PageContentManager({ pageId }: { pageId: string }) {
         </DialogTrigger>
         <DialogContent>
           <DialogTitle>Choose Content Type</DialogTitle>
-          <LinkTypeSelector
+          <ContentTypeSelector
             onSelect={(type) => {
               setSelectedType(type);
-              setIsAddingLink(false);
+              setIsAddingContent(false);
               setShowForm(true);
             }}
-            onClose={() => setIsAddingLink(false)}
+            onClose={() => setIsAddingContent(false)}
           />
         </DialogContent>
       </Dialog>
@@ -133,30 +114,9 @@ export function PageContentManager({ pageId }: { pageId: string }) {
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent side='bottom'>
           <SheetHeader>
-            <SheetTitle>Add {selectedType?.charAt(0).toUpperCase() + selectedType?.slice(1)}</SheetTitle>
+            <SheetTitle>Add {selectedType?.charAt(0).toUpperCase() + selectedType?.slice(1).toLowerCase()}</SheetTitle>
           </SheetHeader>
-          <div className='p-6'>
-            {selectedType && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleAddLink(new FormData(e.currentTarget));
-                }}
-                className='space-y-4'
-              >
-                <Label>Title</Label>
-                <Input name='title' placeholder='Enter title' required />
-                {selectedType === "link" && (
-                  <>
-                    <Label>URL</Label>
-                    <Input name='url' type='url' placeholder='https://example.com' required />
-                  </>
-                )}
-                {selectedType === "image" && <ImageUpload name='image' />}
-                <Button type='submit'>Add</Button>
-              </form>
-            )}
-          </div>
+          <div className='p-6'>{selectedType && <ContentForm type={selectedType} onSubmit={handleAddContent} possibleParents={contents} />}</div>
         </SheetContent>
       </Sheet>
     </div>

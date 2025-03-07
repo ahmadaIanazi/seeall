@@ -2,7 +2,7 @@ import { PageContentManager } from "@/components/dashboard/page-content-manager"
 import PageFooterManager from "@/components/dashboard/page-footer-manager";
 import { PageHeaderManager } from "@/components/dashboard/page-header-manager";
 import { PageLoading } from "@/components/dashboard/page-loading";
-import { PageToolbar } from "@/components/dashboard/toolbar";
+import { PageToolbar } from "@/components/dashboard/page-toolbar";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";

@@ -22,4 +22,4 @@ if (process.env.NODE_ENV !== "production") {
    globalThis.__db_initialized = true;
    import("./init-db").then(({ initDatabase }) => initDatabase().catch(console.error)).catch(console.error);
  }
- */
+*/

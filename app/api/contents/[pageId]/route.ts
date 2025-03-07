@@ -14,16 +14,15 @@ export async function GET(req: NextRequest, { params }: { params: { pageId: stri
         userId: session.user.id,
       },
       include: {
-        links: {
+        contents: {
           orderBy: { order: "asc" },
         },
       },
     });
 
     if (!page) return new NextResponse("Page not found", { status: 404 });
-
-    return NextResponse.json(page.links);
-  } catch (error) {
+    return NextResponse.json(page.contents);
+  } catch {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
@@ -45,21 +44,32 @@ export async function PUT(req: NextRequest, { params }: { params: { pageId: stri
 
     if (!page) return new NextResponse("Page not found", { status: 404 });
 
-    await db.link.deleteMany({ where: { pageId: page.id } });
-    const updatedLinks = await db.link.createMany({
-      data: body.map((link) => ({
-        id: link.id,
-        type: link.type || "link",
-        title: link.title,
-        url: link.url || "",
-        image: link.image || "",
-        description: link.description || "",
-        order: link.order || 0,
+    await db.content.deleteMany({ where: { pageId: page.id } });
+    const updatedContents = await db.content.createMany({
+      data: body.map((item) => ({
+        id: item.id,
+        type: item.type || "BLANK",
+        title: item.title || "",
+        url: item.url || "",
+        image: item.image || "",
+        icon: item.icon || "",
+        description: item.description || "",
+        name: item.name || "",
+        price: item.price || 0,
+        currency: item.currency || "",
+        calories: item.calories || 0,
+        allergies: item.allergies || "",
+        allergiesIcons: item.allergiesIcons || {},
+        additionalPrices: item.additionalPrices || {},
+        multiLanguage: item.multiLanguage || {},
+        parentContentId: item.parentContentId || null,
+        visible: item.visible === false ? false : true,
+        order: item.order || 0,
         pageId: page.id,
       })),
     });
 
-    return NextResponse.json(updatedLinks);
+    return NextResponse.json(updatedContents);
   } catch {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
@@ -70,8 +80,8 @@ export async function POST(req: NextRequest, { params }: { params: { pageId: str
     const session = await getServerSession(authOptions);
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
-    const { type, title, url, image, description, order } = await req.json();
-    if (!title) return new NextResponse("Invalid request body", { status: 400 });
+    const body = await req.json();
+    if (!body.title) return new NextResponse("Invalid request body", { status: 400 });
 
     const page = await db.page.findFirst({
       where: {
@@ -82,19 +92,30 @@ export async function POST(req: NextRequest, { params }: { params: { pageId: str
 
     if (!page) return new NextResponse("Page not found", { status: 404 });
 
-    const newLink = await db.link.create({
+    const newContent = await db.content.create({
       data: {
-        type: type || "link",
-        title,
-        url: url || "",
-        image: image || "",
-        description: description || "",
-        order: order || 0,
+        type: body.type || "LINK",
+        title: body.title,
+        url: body.url || "",
+        image: body.image || "",
+        icon: body.icon || "",
+        description: body.description || "",
+        name: body.name || "",
+        price: body.price || 0,
+        currency: body.currency || "",
+        calories: body.calories || 0,
+        allergies: body.allergies || "",
+        allergiesIcons: body.allergiesIcons || {},
+        additionalPrices: body.additionalPrices || {},
+        multiLanguage: body.multiLanguage || {},
+        parentContentId: body.parentContentId || null,
+        visible: body.visible === false ? false : true,
+        order: body.order || 0,
         pageId: page.id,
       },
     });
 
-    return NextResponse.json(newLink);
+    return NextResponse.json(newContent);
   } catch {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
@@ -117,8 +138,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { pageId: s
 
     if (!page) return new NextResponse("Page not found", { status: 404 });
 
-    await db.link.delete({ where: { id } });
-    return new NextResponse("Link deleted successfully", { status: 200 });
+    await db.content.delete({ where: { id } });
+    return new NextResponse("Content deleted successfully", { status: 200 });
   } catch {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
