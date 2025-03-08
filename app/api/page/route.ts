@@ -39,11 +39,11 @@ export async function PUT(req: NextRequest) {
     const updatedPage = await db.page.update({
       where: { userId: session.user.id },
       data: body, // Directly updating based on incoming body
-      include: {
-        links: { orderBy: { order: "asc" } },
-        socialLinks: true,
-        stats: true,
-      },
+      // include: {
+      //   links: { orderBy: { order: "asc" } },
+      //   socialLinks: true,
+      //   stats: true,
+      // },
     });
 
     return NextResponse.json(updatedPage);

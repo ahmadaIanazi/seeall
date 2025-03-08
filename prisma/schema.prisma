@@ -19,38 +19,55 @@ enum ContentType {
   BLANK
 }
 
+enum PaymentStatus {
+  SUCCEEDED
+  PENDING
+  FAILED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+  TRIAL
+}
+
 model User {
-  id            String   @id @default(cuid())
-  username      String   @unique
+  id            String        @id @default(cuid())
+  username      String        @unique
   password      String
   email         String?
   emailVerified DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now())
   page          Page?
+  subscriptions Subscription[]
+  paymentMethods PaymentMethod[]
+  payments       Payment[]
 }
 
 model Page {
-  id               String      @id @default(cuid())
-  userId           String      @unique
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @default(now())
-  alignment        String      @default("center")
-  backgroundColor  String      @default("#FFFFFF")
-  bio              String?
-  brandColor       String      @default("#000000")
-  font             String      @default("default")
-  footer           String?
-  language         String      @default("en")
-  multipleLanguage Boolean     @default(false)
-  live             Boolean     @default(true)
-  pageImage        String?
-  pageName         String?
-  style            String?
-  showCategories   Boolean     @default(true)
-  contents         Content[]
-  pageStats        PageStats?
-  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String       @id @default(cuid())
+  userId            String       @unique
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @default(now())
+  alignment         String       @default("center")
+  backgroundColor   String       @default("#FFFFFF")
+  bio               String?
+  brandColor        String       @default("#000000")
+  font              String       @default("default")
+  footer            String?
+  language          String       @default("en")
+  multipleLanguage  Boolean      @default(false)
+  live              Boolean      @default(true)
+  pageImage         String?
+  pageName          String?
+  style             String?
+  featuredContentIds String[]
+  showCategories    Boolean      @default(true)
+  contents          Content[]
+  pageStats         PageStats?
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PageStats {
@@ -82,6 +99,10 @@ model Content {
   multiLanguage    Json?
   parentContentId  String?
   visible          Boolean       @default(true)
+  anchorName       String?
+  anchorImage      String?
+  anchorIcon       String?
+  anchor           Boolean?
   order            Int           @default(0)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @default(now())
@@ -99,4 +120,39 @@ model ContentStats {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
   content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+}
+
+model PaymentMethod {
+  id                    String  @id @default(cuid())
+  userId                String
+  stripePaymentMethodId String
+  cardBrand             String?
+  cardLast4             String?
+  cardExpMonth          Int?
+  cardExpYear           Int?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @default(now())
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id                   String        @id @default(cuid())
+  userId               String
+  amount               Int
+  currency             String
+  status               PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @default(now())
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id                   String           @id @default(cuid())
+  userId               String
+  status               SubscriptionStatus @default(ACTIVE)
+  stripeSubscriptionId String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @default(now())
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

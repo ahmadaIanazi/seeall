@@ -1,35 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { ExternalLinkIcon, LogOutIcon } from "lucide-react";
 import { User } from "next-auth";
-import { useDashboardStore } from "@/lib/store/dashboard";
-import { toast } from "sonner";
-import { ExternalLinkIcon, Loader2, LogOutIcon } from "lucide-react";
-import { useState } from "react";
+import { signOut } from "next-auth/react";
+import Link from "next/link";
 
 interface DashboardNavProps {
   user: User;
 }
 
 export function DashboardNav({ user }: DashboardNavProps) {
-  const [isSaving, setIsSaving] = useState(false);
-  const { hasUnsavedChanges, saveChanges } = useDashboardStore();
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await saveChanges();
-      toast.success("Changes saved successfully");
-    } catch (error) {
-      console.error("Failed to save changes:", error);
-      toast.error("Failed to save changes");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <header className='border-b'>
       <div className='container max-w-7xl mx-auto flex h-16 items-center justify-between px-4'>
@@ -43,12 +24,6 @@ export function DashboardNav({ user }: DashboardNavProps) {
           </Link>
         </div>
         <div className='flex items-center gap-4'>
-          {hasUnsavedChanges && (
-            <Button onClick={handleSave} disabled={isSaving} className='gap-2'>
-              {isSaving && <Loader2 className='h-4 w-4 animate-spin' />}
-              Save Changes
-            </Button>
-          )}
           <Button variant='outline' onClick={() => signOut({ callbackUrl: "/" })}>
             <LogOutIcon />
           </Button>

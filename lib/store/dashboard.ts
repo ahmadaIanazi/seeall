@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Page, Content } from "@prisma/client";
+import { boolean } from "zod";
 
 interface DashboardState {
   // Page State
@@ -9,6 +10,8 @@ interface DashboardState {
 
   // Track Changes
   hasUnsavedChanges: boolean;
+  edit: boolean;
+  setEdit: (state: boolean) => void;
 
   // Actions
   setPage: (updates: Partial<Page>) => void;
@@ -18,7 +21,10 @@ interface DashboardState {
   addContent: (content: Content) => void;
   removeContent: (id: string) => void;
   reorderContents: (contents: Content[]) => void;
+  toggleContentVisibility: (contentId: string) => void;
 
+  currentContent: Partial<Content> | null;
+  setCurrentContent: (currentContent: Partial<Content>) => void;
   updateContent: (content: Content) => void;
 
   // Save Changes
@@ -31,9 +37,10 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   pageId: null,
 
   contents: [],
-
+  currentContent: null,
   hasUnsavedChanges: false,
-
+  edit: true,
+  setEdit: (state) => set({ edit: state }),
   // Actions
   setPage(updates) {
     set((state) => {
@@ -52,17 +59,24 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
 
   setPageId: (pageId: string) => set({ pageId }),
+  // Contents Controls
+  setContents: (contents) => set({ contents, hasUnsavedChanges: true }),
+  reorderContents: (contents) => set({ contents, hasUnsavedChanges: true }),
 
+  // Single Content Controls
+  addContent: (content) => set((state) => ({ contents: [...state.contents, content], hasUnsavedChanges: true })),
+  removeContent: (id) => set((state) => ({ contents: state.contents.filter((l) => l.id !== id), hasUnsavedChanges: true })),
+  setCurrentContent: (currentContent) => set({ currentContent }),
   updateContent: (content) => {
     set((state) => ({
       contents: state.contents.map((l) => (l.id === content.id ? content : l)),
       hasUnsavedChanges: true,
     }));
   },
-  setContents: (contents) => set({ contents, hasUnsavedChanges: true }),
-  addContent: (content) => set((state) => ({ contents: [...state.contents, content], hasUnsavedChanges: true })),
-  removeContent: (id) => set((state) => ({ contents: state.contents.filter((l) => l.id !== id), hasUnsavedChanges: true })),
-  reorderContents: (contents) => set({ contents, hasUnsavedChanges: true }),
+  toggleContentVisibility: (contentId) =>
+    set((state) => ({
+      contents: state.contents.map((item) => (item.id === contentId ? { ...item, visible: !item.visible } : item)),
+    })),
 
   // Save Changes
   saveChanges: async () => {

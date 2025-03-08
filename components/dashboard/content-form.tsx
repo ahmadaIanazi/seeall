@@ -1,89 +1,69 @@
 "use client";
-import { useState } from "react";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { ImageUploadMulti } from "@/components/images/image-upload-multi";
+import { Button } from "@/components/ui/button";
+import { IconName, IconPicker } from "@/components/ui/icon-picker";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { IconPicker } from "@/components/ui/icon-picker";
+import { useDashboardStore } from "@/lib/store/dashboard";
 import { ContentType } from "@/types/content-type";
-import { Link, Image as ImageIcon, Folder, Star, ShoppingCart, Users, File } from "lucide-react";
+import { useState } from "react";
 
-// Default icons for each content type
-const DEFAULT_ICONS = {
-  [ContentType.LINK]: <Link className='h-4 w-4' />,
-  [ContentType.IMAGE]: <ImageIcon className='h-4 w-4' />,
-  [ContentType.CATEGORY]: <Folder className='h-4 w-4' />,
-  [ContentType.ICON]: <Star className='h-4 w-4' />,
-  [ContentType.PRODUCT]: <ShoppingCart className='h-4 w-4' />,
-  [ContentType.SOCIAL]: <Users className='h-4 w-4' />,
-  [ContentType.BLANK]: <File className='h-4 w-4' />,
-};
+const URLInput = (v) => <Input name='url' type='url' placeholder='https://example.com' defaultValue={v?.url || ""} />;
+const IMAGEInput = (v) => <ImageUploadMulti name='image' defaultValue={v?.image ? [v.image] : []} />;
+const TITLEInput = (v) => <Input name='title' defaultValue={v?.title || ""} placeholder='Enter title' />;
+const DESCRIPTIONInput = (v) => <Textarea name='description' defaultValue={v?.description || ""} placeholder='Description...' />;
+const ICONInput = (v, value, onValueChange) => <IconPicker name='icon' triggerPlaceholder='Select Icon' value={value} onValueChange={onValueChange} />;
+const PRICEInput = (v) => <Input name='price' type='number' step='0.01' defaultValue={v?.price || ""} placeholder='0.00' />;
+const CURRENCYInput = (v) => <Input name='currency' defaultValue={v?.currency || ""} placeholder='USD, EUR...' />;
 
-const URL = <Input name='url' type='url' placeholder='https://example.com' />;
-const IMAGE = <ImageUploadMulti name='image' />;
-const TITLE = <Input name='title' placeholder='Enter title' />;
-const DESCRIPTION = <Textarea name='description' placeholder='Description...' />;
-const ICON = <IconPicker triggerPlaceholder='Select Icon' />;
-const PRICE = <Input name='price' type='number' step='0.01' placeholder='0.00' />;
-const CURRENCY = <Input name='currency' placeholder='USD, EUR...' />;
-
-/**
- * Renders the required field based on the selected content type.
- * Each content type has only one required field.
- */
-function RequiredFields({ type }) {
+function RequiredFields({ type, currentContent }) {
   switch (type) {
     case ContentType.LINK:
-      return <>{URL}</>;
+      return <>{URLInput(currentContent)}</>;
     case ContentType.IMAGE:
-      return <>{IMAGE}</>;
+      return <>{IMAGEInput(currentContent)}</>;
     case ContentType.CATEGORY:
     case ContentType.PRODUCT:
-      return <>{TITLE}</>;
+      return <>{TITLEInput(currentContent)}</>;
     case ContentType.ICON:
-      return <>{ICON}</>;
+      return <>{ICONInput(currentContent)}</>;
     case ContentType.SOCIAL:
-      return <>{URL}</>;
+      return <>{URLInput(currentContent)}</>;
     case ContentType.BLANK:
-      return null;
     default:
       return null;
   }
 }
 
-/**
- * Renders the primary optional fields based on the selected content type.
- * These fields appear immediately below the required fields.
- */
-function PrimaryOptionalFields({ type }) {
+function PrimaryOptionalFields({ type, currentContent }) {
   switch (type) {
     case ContentType.LINK:
-      return <>{TITLE}</>;
+      return <>{TITLEInput(currentContent)}</>;
     case ContentType.IMAGE:
     case ContentType.CATEGORY:
-      return <>{DESCRIPTION}</>;
+      return <>{DESCRIPTIONInput(currentContent)}</>;
     case ContentType.ICON:
-      return <>{TITLE}</>;
+      return <>{TITLEInput(currentContent)}</>;
     case ContentType.PRODUCT:
       return (
         <>
-          {PRICE}
-          {CURRENCY}
-          {DESCRIPTION}
-          {IMAGE}
+          {PRICEInput(currentContent)}
+          {CURRENCYInput(currentContent)}
+          {DESCRIPTIONInput(currentContent)}
+          {IMAGEInput(currentContent)}
         </>
       );
     case ContentType.SOCIAL:
-      return <>{ICON}</>;
+      return <>{ICONInput(currentContent)}</>;
     case ContentType.BLANK:
       return (
         <>
-          {TITLE}
-          {DESCRIPTION}
-          {IMAGE}
+          {TITLEInput(currentContent)}
+          {DESCRIPTIONInput(currentContent)}
+          {IMAGEInput(currentContent)}
         </>
       );
     default:
@@ -91,23 +71,17 @@ function PrimaryOptionalFields({ type }) {
   }
 }
 
-/**
- * Renders the secondary optional fields that appear when 'More Options' is enabled.
- * Excludes fields already used in Required or Primary Optional sections.
- */
-function SecondaryOptionalFields({ type }) {
+function SecondaryOptionalFields({ type, currentContent }) {
   const allOptions = [
-    { key: "title", component: TITLE },
-    { key: "url", component: URL },
-    { key: "image", component: IMAGE },
-    { key: "description", component: DESCRIPTION },
-    { key: "icon", component: ICON },
-    { key: "price", component: PRICE },
-    { key: "currency", component: CURRENCY },
+    { key: "title", component: TITLEInput(currentContent) },
+    { key: "url", component: URLInput(currentContent) },
+    { key: "image", component: IMAGEInput(currentContent) },
+    { key: "description", component: DESCRIPTIONInput(currentContent) },
+    { key: "icon", component: ICONInput(currentContent) },
+    { key: "price", component: PRICEInput(currentContent) },
+    { key: "currency", component: CURRENCYInput(currentContent) },
   ];
-
   const usedOptions = new Set();
-
   switch (type) {
     case ContentType.LINK:
       usedOptions.add("url").add("title");
@@ -133,7 +107,6 @@ function SecondaryOptionalFields({ type }) {
     default:
       break;
   }
-
   return (
     <>
       {allOptions
@@ -142,9 +115,9 @@ function SecondaryOptionalFields({ type }) {
           <div key={key}>{component}</div>
         ))}
       <Label>Multi Language (JSON)</Label>
-      <Textarea name='multiLanguage' placeholder='{"en":"Hello","es":"Hola"}' />
+      <Textarea name='multiLanguage' defaultValue={currentContent?.multiLanguage ? JSON.stringify(currentContent.multiLanguage) : ""} placeholder='{"en":"Hello","es":"Hola"}' />
       <Label>Parent Content</Label>
-      <Select>
+      <Select defaultValue={currentContent?.parentContentId || "none"} name='parentContentId'>
         <SelectTrigger>
           <SelectValue placeholder='No Parent' />
         </SelectTrigger>
@@ -156,31 +129,29 @@ function SecondaryOptionalFields({ type }) {
   );
 }
 
-/**
- * Main form component that dynamically renders fields based on content type.
- * Allows toggling secondary optional fields.
- */
 export function ContentForm({ type, onSubmit }) {
+  const { currentContent } = useDashboardStore();
+  const isEditing = !!currentContent;
   const [showMore, setShowMore] = useState(false);
-
+  const [selectedIcon, setSelectedIcon] = useState(currentContent?.icon || "Star");
   const handleSubmit = (e) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     onSubmit(data);
   };
-
   return (
     <form onSubmit={handleSubmit} className='space-y-4 max-h-96 overflow-y-auto'>
-      <RequiredFields type={type} />
-      <PrimaryOptionalFields type={type} />
+      <RequiredFields type={type} currentContent={currentContent} />
+      <PrimaryOptionalFields type={type} currentContent={currentContent} />
       <Label>Icon</Label>
-      <IconPicker name='icon' triggerPlaceholder='Select Icon' />
+      {ICONInput(currentContent, selectedIcon, setSelectedIcon)}
+      <input type='hidden' name='icon' value={selectedIcon || ""} />
       <div className='flex items-center justify-between pt-2'>
         <Label className='text-sm'>More Options</Label>
         <Switch checked={showMore} onCheckedChange={setShowMore} />
       </div>
-      {showMore && <SecondaryOptionalFields type={type} />}
-      <Button type='submit'>Add</Button>
+      {showMore && <SecondaryOptionalFields type={type} currentContent={currentContent} />}
+      <Button type='submit'>{isEditing ? "Save" : "Add"}</Button>
     </form>
   );
 }

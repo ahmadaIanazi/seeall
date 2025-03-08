@@ -14,7 +14,8 @@ import { ContentForm } from "./content-form";
 import { ContentSortableItem } from "./content-sortable-items";
 
 export function PageContentManager({ pageId }: { pageId: string }) {
-  const { contents, setContents, addContent, removeContent, reorderContents } = useDashboardStore();
+  const { contents, setContents, edit, addContent, removeContent, reorderContents, currentContent, setCurrentContent, updateContent, toggleContentVisibility } =
+    useDashboardStore();
   const [isAddingContent, setIsAddingContent] = useState(false);
   const [selectedType, setSelectedType] = useState<ContentType | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -40,7 +41,7 @@ export function PageContentManager({ pageId }: { pageId: string }) {
     if (parentContentId === "none") parentContentId = "";
 
     const newItem = {
-      id: crypto.randomUUID(),
+      id: currentContent?.id ? currentContent.id : crypto.randomUUID(),
       type: selectedType || ContentType.BLANK,
       title: (formData.get("title") as string) || null,
       url: (formData.get("url") as string) || null,
@@ -50,8 +51,10 @@ export function PageContentManager({ pageId }: { pageId: string }) {
       name: (formData.get("name") as string) || null,
       currency: (formData.get("currency") as string) || null,
       parentContentId: parentContentId || null,
+      visible: currentContent?.visible ? currentContent.visible : true,
+      anchor: selectedType === ContentType.CATEGORY ? true : false,
       pageId,
-      createdAt: new Date(),
+      createdAt: currentContent?.createdAt ? currentContent.createdAt : new Date(),
       updatedAt: new Date(),
     } as Content;
 
@@ -67,8 +70,20 @@ export function PageContentManager({ pageId }: { pageId: string }) {
       }
     }
 
-    addContent(newItem);
+    if (currentContent) {
+      updateContent(newItem);
+    } else {
+      addContent(newItem);
+    }
     setShowForm(false);
+    setCurrentContent(null);
+  }
+
+  function handleOnContentEdit(content) {
+    setIsAddingContent(false);
+    setSelectedType(content.type);
+    setShowForm(true);
+    setCurrentContent(content);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -86,17 +101,26 @@ export function PageContentManager({ pageId }: { pageId: string }) {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={contents.map((content) => content.id)} strategy={verticalListSortingStrategy}>
           {contents.map((content) => (
-            <ContentSortableItem key={content.id} content={content} onDelete={removeContent} />
+            <ContentSortableItem
+              key={content.id}
+              content={content}
+              publicMode={!edit}
+              onDelete={removeContent}
+              toggleVisibility={toggleContentVisibility}
+              onEdit={handleOnContentEdit}
+            />
           ))}
         </SortableContext>
       </DndContext>
 
       <Dialog open={isAddingContent} onOpenChange={setIsAddingContent}>
         <DialogTrigger asChild>
-          <Button className='w-full' variant='outline'>
-            <Plus className='mr-2 h-4 w-4' />
-            Add New
-          </Button>
+          {edit && (
+            <Button className='w-full' variant='outline'>
+              <Plus className='mr-2 h-4 w-4' />
+              Add New
+            </Button>
+          )}
         </DialogTrigger>
         <DialogContent>
           <DialogTitle>Choose Content Type</DialogTitle>

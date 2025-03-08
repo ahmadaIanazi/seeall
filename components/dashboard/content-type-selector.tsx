@@ -2,53 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ContentType } from "@/types/content-type";
-import { Link, MapPin, Image, Heading } from "lucide-react";
-
-const CONTENT_TYPES = [
-  {
-    id: ContentType.LINK,
-    icon: Link,
-    label: "Link",
-    description: "Add a simple link to any URL",
-  },
-  {
-    id: ContentType.IMAGE,
-    icon: Image,
-    label: "Image",
-    description: "Add a link with a custom image",
-  },
-  {
-    id: ContentType.ICON,
-    icon: MapPin,
-    label: "Icon",
-    description: "Add a Google Maps location",
-  },
-  {
-    id: ContentType.CATEGORY,
-    icon: Heading,
-    label: "Section",
-    description: "Add a header to organize your links",
-  },
-  {
-    id: ContentType.PRODUCT,
-    icon: Heading,
-    label: "Product",
-    description: "Add a product to with image and prices.",
-  },
-  {
-    id: ContentType.SOCIAL,
-    icon: Heading,
-    label: "Social Link",
-    description: "Add a header to organize your links",
-  },
-  {
-    id: ContentType.BLANK,
-    icon: Heading,
-    label: "Blank",
-    description: "Start with a blank component.",
-  },
-] as const;
+import { CONTENT_TYPES } from "@/constants/contentTypes";
 
 interface ContentTypeSelectorProps {
   onSelect: (type: string) => void;
@@ -68,7 +22,7 @@ export function ContentTypeSelector({ onSelect, onClose }: ContentTypeSelectorPr
             onClose();
           }}
         >
-          <type.icon className='h-6 w-6' />
+          {type.icon}
           <div className='text-sm font-medium'>{type.label}</div>
           <div className='text-xs text-muted-foreground text-center'>{type.description}</div>
         </Button>

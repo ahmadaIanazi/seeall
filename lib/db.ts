@@ -18,8 +18,8 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 /** RUN THIS ONLY WHEN YOU NEED in development mode.
- if (!globalThis.__db_initialized) {
+ if (globalThis.__db_initialized) {
    globalThis.__db_initialized = true;
    import("./init-db").then(({ initDatabase }) => initDatabase().catch(console.error)).catch(console.error);
  }
-*/
+ */
