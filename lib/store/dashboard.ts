@@ -1,6 +1,5 @@
+import { Content, Page } from "@prisma/client";
 import { create } from "zustand";
-import { Page, Content } from "@prisma/client";
-import { boolean } from "zod";
 
 interface DashboardState {
   // Page State

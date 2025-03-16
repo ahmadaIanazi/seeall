@@ -1,14 +1,15 @@
 "use client";
 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useDashboardStore } from "@/lib/store/dashboard";
+import { useTheme } from "@/lib/store/theme";
 import { cn } from "@/lib/utils";
-import { AlignCenter, AlignLeft, AlignRight, Palette, Paintbrush, LayoutTemplate, ChevronDown, ChevronRight, Edit, Save, Loader2, Eye } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { THEMES } from "@/types/content-type";
+import { AlignCenter, AlignLeft, AlignRight, ChevronDown, ChevronRight, Edit, Eye, LayoutTemplate, Loader2, Paintbrush, Save } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
-import { THEMES } from "@/types/content-type";
 
 interface PageToolbarProps {
   pageId: string | null;
@@ -20,6 +21,7 @@ export function PageToolbar({ pageId }: PageToolbarProps) {
   const { edit, setEdit, hasUnsavedChanges, saveChanges } = useDashboardStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const { setTheme: setMainTheme } = useTheme();
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -45,12 +47,17 @@ export function PageToolbar({ pageId }: PageToolbarProps) {
 
     // Set initial values when page changes
     if (page) {
+      setMainTheme({
+        theme: page.style || THEMES.DEFAULT,
+        alignment: page.alignment || "left",
+        primaryColor: page.brandColor || "#000000",
+      });
       setAlignment(page.alignment || "center");
       setBackgroundColor(page.backgroundColor || "#ffffff");
       setPrimaryColor(page.brandColor || "#000000");
       setTheme(page.style || "rounded");
     }
-  }, [page, pageId, setPageId]);
+  }, [pageId, setPageId]);
 
   // Check if scroll is needed
   useEffect(() => {
@@ -80,24 +87,21 @@ export function PageToolbar({ pageId }: PageToolbarProps) {
     if (!value) return;
     setAlignment(value);
     setPage({ alignment: value });
-  }
-
-  function handleBackgroundColorChange(e: React.ChangeEvent<HTMLInputElement>): void {
-    const value = e.target.value;
-    setBackgroundColor(value);
-    setPage({ backgroundColor: value });
+    setMainTheme({ alignment: value || "left" });
   }
 
   function handlePrimaryColorChange(e: React.ChangeEvent<HTMLInputElement>): void {
     const value = e.target.value;
     setPrimaryColor(value);
     setPage({ brandColor: value });
+    setMainTheme({ primaryColor: value || "#000000" });
   }
 
   function handleThemeChange(value: string | null): void {
     if (!value) return;
     setTheme(value);
     setPage({ style: value });
+    setMainTheme({ theme: value || THEMES.DEFAULT });
   }
 
   // Theme options for the toggle group
@@ -148,23 +152,6 @@ export function PageToolbar({ pageId }: PageToolbarProps) {
                     <AlignRight className='h-4 w-4' />
                   </ToggleGroupItem>
                 </ToggleGroup>
-              </div>
-
-              <div className='flex items-center gap-1 border-r pr-3 min-w-fit'>
-                <Popover>
-                  <PopoverTrigger className='flex items-center gap-1 hover:bg-muted px-2 py-1 rounded-md'>
-                    <Palette className='h-4 w-4' />
-                    <span className='text-sm'>Background</span>
-                    <div className='h-4 w-4 rounded-full border' style={{ backgroundColor }} />
-                    <ChevronDown className='h-3 w-3' />
-                  </PopoverTrigger>
-                  <PopoverContent className='w-auto p-2'>
-                    <div className='flex items-center gap-2'>
-                      <input type='color' value={backgroundColor} onChange={handleBackgroundColorChange} className='h-8 w-12 cursor-pointer border rounded' />
-                      <span className='text-xs'>{backgroundColor}</span>
-                    </div>
-                  </PopoverContent>
-                </Popover>
               </div>
 
               <div className='flex items-center gap-1 border-r pr-3 min-w-fit'>

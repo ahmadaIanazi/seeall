@@ -1,17 +1,15 @@
 "use client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDashboardStore } from "@/lib/store/dashboard";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useStyles } from "@/lib/store/styles";
 import { Icon } from "../ui/icon";
-import { getThemeStyles } from "@/lib/utils/style";
-import { ContentType } from "@/types/content-type";
 
 export default function SectionsList() {
-  const { page, edit, contents, updateContent } = useDashboardStore();
-  const categories = contents?.filter((item) => item.anchor === true);
+  const { edit, contents, updateContent } = useDashboardStore();
+  const { styles } = useStyles();
 
-  // Extract theme-based styles
-  const { borderRadius, borderStyle, shadow, padding, contentTypeClasses } = getThemeStyles(page?.style || "classic", page?.alignment || "center", page?.brandColor || "");
+  const categories = contents?.filter((item) => item.anchor === true);
 
   function handleToggleCategoryVisibile(content) {
     const updatedContent = { ...content, anchor: !content.anchor };
@@ -36,9 +34,9 @@ export default function SectionsList() {
             }
 
             return (
-              <div key={cat.id} className={`relative flex flex-col items-center shrink-0 ${contentTypeClasses} ${borderStyle} ${shadow} ${padding}`}>
+              <div key={cat.id} className={`relative flex flex-col items-center shrink-0 ${styles.contentItem}`}>
                 <div className='group relative'>
-                  <Avatar className={`w-16 h-16 flex items-center justify-center text-xl ${borderRadius}`}>{content}</Avatar>
+                  <Avatar className={`w-16 h-16 flex items-center justify-center text-xl ${styles.image}`}>{content}</Avatar>
                   {edit && (
                     <button onClick={() => handleToggleCategoryVisibile(cat)} className='absolute top-0 right-0 m-1 opacity-0 group-hover:opacity-100 transition-opacity'>
                       <Icon name='Eye' />

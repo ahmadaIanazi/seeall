@@ -1,7 +1,7 @@
 "use client";
 import { ImageUploadMulti } from "@/components/images/image-upload-multi";
 import { Button } from "@/components/ui/button";
-import { IconName, IconPicker } from "@/components/ui/icon-picker";
+import { IconPicker } from "@/components/ui/icon-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,7 +12,19 @@ import { ContentType } from "@/types/content-type";
 import { useState } from "react";
 
 const URLInput = (v) => <Input name='url' type='url' placeholder='https://example.com' defaultValue={v?.url || ""} />;
-const IMAGEInput = (v) => <ImageUploadMulti name='image' defaultValue={v?.image ? [v.image] : []} />;
+const IMAGEInput = (v) => {
+  const [images, setImages] = useState(v?.image ? [v.image] : []);
+
+  return (
+    <>
+      <ImageUploadMulti multiple={true} value={images} onChange={setImages} />
+      {images.map((img, i) => (
+        <input key={i} type='hidden' name='image' value={img.src} />
+      ))}
+    </>
+  );
+};
+
 const TITLEInput = (v) => <Input name='title' defaultValue={v?.title || ""} placeholder='Enter title' />;
 const DESCRIPTIONInput = (v) => <Textarea name='description' defaultValue={v?.description || ""} placeholder='Description...' />;
 const ICONInput = (v, value, onValueChange) => <IconPicker name='icon' triggerPlaceholder='Select Icon' value={value} onValueChange={onValueChange} />;
@@ -28,8 +40,6 @@ function RequiredFields({ type, currentContent }) {
     case ContentType.CATEGORY:
     case ContentType.PRODUCT:
       return <>{TITLEInput(currentContent)}</>;
-    case ContentType.ICON:
-      return <>{ICONInput(currentContent)}</>;
     case ContentType.SOCIAL:
       return <>{URLInput(currentContent)}</>;
     case ContentType.BLANK:
@@ -45,8 +55,6 @@ function PrimaryOptionalFields({ type, currentContent }) {
     case ContentType.IMAGE:
     case ContentType.CATEGORY:
       return <>{DESCRIPTIONInput(currentContent)}</>;
-    case ContentType.ICON:
-      return <>{TITLEInput(currentContent)}</>;
     case ContentType.PRODUCT:
       return (
         <>
@@ -57,7 +65,7 @@ function PrimaryOptionalFields({ type, currentContent }) {
         </>
       );
     case ContentType.SOCIAL:
-      return <>{ICONInput(currentContent)}</>;
+      return <></>;
     case ContentType.BLANK:
       return (
         <>
@@ -77,7 +85,6 @@ function SecondaryOptionalFields({ type, currentContent }) {
     { key: "url", component: URLInput(currentContent) },
     { key: "image", component: IMAGEInput(currentContent) },
     { key: "description", component: DESCRIPTIONInput(currentContent) },
-    { key: "icon", component: ICONInput(currentContent) },
     { key: "price", component: PRICEInput(currentContent) },
     { key: "currency", component: CURRENCYInput(currentContent) },
   ];
@@ -92,9 +99,6 @@ function SecondaryOptionalFields({ type, currentContent }) {
     case ContentType.CATEGORY:
       usedOptions.add("title").add("description");
       break;
-    case ContentType.ICON:
-      usedOptions.add("icon").add("title");
-      break;
     case ContentType.PRODUCT:
       usedOptions.add("title").add("price").add("currency").add("description").add("image");
       break;
@@ -107,13 +111,9 @@ function SecondaryOptionalFields({ type, currentContent }) {
     default:
       break;
   }
-  return (
+
+  const RenderAdvancedOptions = () => (
     <>
-      {allOptions
-        .filter(({ key }) => !usedOptions.has(key))
-        .map(({ key, component }) => (
-          <div key={key}>{component}</div>
-        ))}
       <Label>Multi Language (JSON)</Label>
       <Textarea name='multiLanguage' defaultValue={currentContent?.multiLanguage ? JSON.stringify(currentContent.multiLanguage) : ""} placeholder='{"en":"Hello","es":"Hola"}' />
       <Label>Parent Content</Label>
@@ -125,6 +125,17 @@ function SecondaryOptionalFields({ type, currentContent }) {
           <SelectItem value='none'>No Parent</SelectItem>
         </SelectContent>
       </Select>
+    </>
+  );
+
+  return (
+    <>
+      {allOptions
+        .filter(({ key }) => !usedOptions.has(key))
+        .map(({ key, component }) => (
+          <div key={key}>{component}</div>
+        ))}
+      {/* <RenderAdvancedOptions /> */}
     </>
   );
 }
@@ -139,12 +150,13 @@ export function ContentForm({ type, onSubmit }) {
     const data = new FormData(e.currentTarget);
     onSubmit(data);
   };
+
   return (
     <form onSubmit={handleSubmit} className='space-y-4 max-h-96 overflow-y-auto'>
-      <RequiredFields type={type} currentContent={currentContent} />
-      <PrimaryOptionalFields type={type} currentContent={currentContent} />
       <Label>Icon</Label>
       {ICONInput(currentContent, selectedIcon, setSelectedIcon)}
+      <RequiredFields type={type} currentContent={currentContent} />
+      <PrimaryOptionalFields type={type} currentContent={currentContent} />
       <input type='hidden' name='icon' value={selectedIcon || ""} />
       <div className='flex items-center justify-between pt-2'>
         <Label className='text-sm'>More Options</Label>

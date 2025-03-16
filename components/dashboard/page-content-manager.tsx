@@ -45,7 +45,7 @@ export function PageContentManager({ pageId }: { pageId: string }) {
       type: selectedType || ContentType.BLANK,
       title: (formData.get("title") as string) || null,
       url: (formData.get("url") as string) || null,
-      image: (formData.get("image") as string) || null,
+      // image: (formData.get("image") as string) || null,
       icon: (formData.get("icon") as string) || null,
       description: (formData.get("description") as string) || null,
       name: (formData.get("name") as string) || null,
@@ -58,6 +58,48 @@ export function PageContentManager({ pageId }: { pageId: string }) {
       updatedAt: new Date(),
     } as Content;
 
+    // Handle image field - should be an array of objects with { src, id }
+    const image = formData.get("image");
+    if (image) {
+      try {
+        // If it's a string, try to parse it as JSON
+        if (typeof image === "string") {
+          // Check if it's already in JSON format
+          if (image.startsWith("[") || image.startsWith("{")) {
+            newItem.image = JSON.parse(image);
+          } else {
+            // It's likely a single data URL, so create an array with one object
+            newItem.image = [
+              {
+                src: image,
+                id: crypto.randomUUID(),
+              },
+            ];
+          }
+        } else {
+          // If it's a File object from a form upload
+          const file = image as File;
+          // You'll need to handle file upload and get the URL
+          // This is placeholder logic - implement your actual file handling
+          newItem.image = [
+            {
+              src: URL.createObjectURL(file), // Replace with your actual file upload logic
+              id: crypto.randomUUID(),
+            },
+          ];
+        }
+      } catch (error) {
+        console.error("Error handling image data:", error);
+        // Fallback to an empty array as specified
+        newItem.image = [];
+      }
+    } else if (currentContent?.image) {
+      // Preserve existing images if we're updating
+      newItem.image = currentContent.image;
+    } else {
+      // Default to empty array for new content
+      newItem.image = [];
+    }
     const price = formData.get("price");
     if (price) newItem.price = parseFloat(price as string);
 
@@ -104,7 +146,7 @@ export function PageContentManager({ pageId }: { pageId: string }) {
             <ContentSortableItem
               key={content.id}
               content={content}
-              publicMode={!edit}
+              editing={edit}
               onDelete={removeContent}
               toggleVisibility={toggleContentVisibility}
               onEdit={handleOnContentEdit}

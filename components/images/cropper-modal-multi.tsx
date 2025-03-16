@@ -22,105 +22,60 @@ export function getDefaultModalState(): CropModalState {
   };
 }
 
-export function CropperModalMulti({ modal, setModal, imageRef, setOriginalImage = null, setImages }) {
+export function CropperModalMulti({ modal, setModal, imageRef, setImages, multiple = false }) {
   function handleCropChange(newCrop: Crop) {
     setModal((m) => ({ ...m, crop: newCrop }));
   }
 
   function handleImageLoaded(img: HTMLImageElement) {
-    const canvasWidth = img.width; // Actual display size in the modal
+    const canvasWidth = img.width;
     const canvasHeight = img.height;
     const naturalWidth = img.naturalWidth;
     const naturalHeight = img.naturalHeight;
 
-    console.log("🖼 Canvas Size (Displayed):", { canvasWidth, canvasHeight });
-    console.log("🔹 Image Natural Size:", { naturalWidth, naturalHeight });
-
     if (!modal.aspect) return false;
 
     const newCrop = getCenteredCrop(canvasWidth, canvasHeight, naturalWidth, naturalHeight, modal.aspect);
-    console.log("📏 Initial Crop:", newCrop);
-
-    setModal((m) => ({
-      ...m,
-      crop: newCrop,
-    }));
-
+    setModal((m) => ({ ...m, crop: newCrop }));
     return false;
   }
 
-  function getCenteredCrop(canvasWidth: number, canvasHeight: number, imageWidth: number, imageHeight: number, aspect?: number) {
+  function getCenteredCrop(canvasWidth, canvasHeight, imageWidth, imageHeight, aspect) {
     let width, height, x, y;
-
-    console.log("🖼 Canvas Display Size:", { width: canvasWidth, height: canvasHeight });
-    console.log("🛠 Aspect Ratio Selected:", aspect);
-
     if (!aspect) {
-      // ✅ Freeform selection (Default 90% of the image)
       width = canvasWidth * 0.9;
       height = canvasHeight * 0.9;
     } else if (aspect === 1) {
-      // ✅ Square (1:1) → Take the largest possible square
-      if (canvasWidth > canvasHeight) {
-        width = height = canvasHeight * 0.9;
-      } else {
-        width = height = canvasWidth * 0.9;
-      }
+      width = height = Math.min(canvasWidth, canvasHeight) * 0.9;
     } else if (aspect > 1) {
-      // ✅ Landscape (16:9 or wider) → Maximize width, ensure height fits
       width = canvasWidth * 0.9;
       height = width / aspect;
-
-      // 🔹 If height exceeds bounds, adjust width instead
       if (height > canvasHeight) {
         height = canvasHeight * 0.9;
         width = height * aspect;
       }
     } else {
-      // ✅ Portrait (9:16 or taller) → Maximize height, ensure width fits
       height = canvasHeight * 0.9;
       width = height * aspect;
-
-      // 🔹 If width exceeds bounds, adjust height instead
       if (width > canvasWidth) {
         width = canvasWidth * 0.9;
         height = width / aspect;
       }
     }
-
-    // ✅ Center the crop area properly
     x = (canvasWidth - width) / 2;
     y = (canvasHeight - height) / 2;
-
-    const crop = {
-      unit: "px",
-      width: Math.round(width),
-      height: Math.round(height),
-      x: Math.round(x),
-      y: Math.round(y),
-      aspect,
-    };
-
-    console.log("📏 FINAL CALCULATED CROP:", crop);
-    return crop;
+    return { unit: "px", width: Math.round(width), height: Math.round(height), x: Math.round(x), y: Math.round(y), aspect };
   }
 
   function setAspectRatio(aspect?: number) {
     if (!imageRef.current) return;
-
     const img = imageRef.current;
     const canvasWidth = img.width;
     const canvasHeight = img.height;
     const naturalWidth = img.naturalWidth;
     const naturalHeight = img.naturalHeight;
 
-    console.log("🛠 Setting Aspect Ratio:", aspect);
-    console.log("🔍 Image Size:", { width: naturalWidth, height: naturalHeight });
-
     const newCrop = getCenteredCrop(canvasWidth, canvasHeight, naturalWidth, naturalHeight, aspect);
-
-    console.log("📏 New Crop Selection:", newCrop);
-
     setModal((m) => ({
       ...m,
       aspect,
@@ -137,21 +92,15 @@ export function CropperModalMulti({ modal, setModal, imageRef, setOriginalImage 
     const canvas = document.createElement("canvas");
     const img = imageRef.current;
     const { naturalWidth, naturalHeight } = img;
-    const { x = 0, y = 0, width = 0, height = 0 } = modal.crop;
+    const { x, y, width, height } = modal.crop;
 
     const scaleX = naturalWidth / img.width;
     const scaleY = naturalHeight / img.height;
-
-    console.log("🖼 Original Image Size:", { naturalWidth, naturalHeight });
-    console.log("📐 Crop Selection:", { x, y, width, height });
-    console.log("🔍 Scale Factors:", { scaleX, scaleY });
 
     const cropX = x * scaleX;
     const cropY = y * scaleY;
     const cropWidth = width * scaleX;
     const cropHeight = height * scaleY;
-
-    console.log("🖌 Final Cropping Area:", { cropX, cropY, cropWidth, cropHeight });
 
     canvas.width = cropWidth;
     canvas.height = cropHeight;
@@ -163,20 +112,13 @@ export function CropperModalMulti({ modal, setModal, imageRef, setOriginalImage 
     }
 
     ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-
     const base64Image = canvas.toDataURL("image/png");
+
     setImages((prev) => {
       const updated = [...prev];
       updated[modal.index!] = { ...updated[modal.index!], src: base64Image };
-
-      return updated;
+      return multiple ? updated : [updated[0]]; // Only keep one image if multiple is false
     });
-    if (setOriginalImage) {
-      setOriginalImage((prev) => {
-        if (!prev) return { id: crypto.randomUUID(), src: base64Image }; // Handle null case
-        return { ...prev, src: base64Image }; // Handle single-object case (AvatarUpload)
-      });
-    }
 
     setModal(getDefaultModalState());
   }
@@ -213,14 +155,7 @@ export function CropperModalMulti({ modal, setModal, imageRef, setOriginalImage 
 
         {/* Image Cropper */}
         {modal.tempSrc && (
-          <ReactCrop
-            crop={modal.crop}
-            onChange={handleCropChange}
-            onImageLoaded={handleImageLoaded}
-            keepSelection
-            ruleOfThirds
-            locked={modal.aspect !== undefined} // Lock manual resizing if aspect ratio is selected
-          >
+          <ReactCrop crop={modal.crop} onChange={handleCropChange} onImageLoaded={handleImageLoaded} keepSelection ruleOfThirds locked={modal.aspect !== undefined}>
             <img ref={imageRef} src={modal.tempSrc} alt='Crop Preview' style={{ maxHeight: 400, maxWidth: "100%" }} />
           </ReactCrop>
         )}

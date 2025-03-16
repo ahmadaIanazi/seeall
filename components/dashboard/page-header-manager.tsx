@@ -2,83 +2,73 @@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useDashboardStore } from "@/lib/store/dashboard";
+import { useStyles } from "@/lib/store/styles";
 import { useEffect, useState } from "react";
-import { ImageUpload } from "../images/image-upload";
 import SectionsList from "./sections-list";
-import { getThemeStyles } from "@/lib/utils/style";
+import { useTheme } from "@/lib/store/theme";
+import { ContentType } from "@/types";
+import { Page } from "@prisma/client";
+import { CategoriesListComponent, ContentRenderer, CoreImageComponent } from "../components";
+import { ImageUploadMulti } from "../images/image-upload-multi";
 
-export function PageHeaderManager({ pageId }: { pageId: string }) {
-  const { page, setPage, edit } = useDashboardStore();
-  const [pageName, setPageName] = useState("");
-  const [bio, setBio] = useState("");
-  const [pageImage, setPageImage] = useState("");
+export function PageHeaderManager({ page }: { page: Partial<Page> }) {
+  const { setPage, edit, contents } = useDashboardStore();
+  const [pageName, setPageName] = useState(page?.pageName || "");
+  const [bio, setBio] = useState(page?.bio || "");
+  const [pageImage, setPageImage] = useState(page?.pageImage || []);
+  const { styles } = useStyles();
+  const { themeConfig } = useTheme();
 
-  const theme = page?.style || "DEFAULT";
-  const primaryColor = page?.brandColor || "#000000";
-  const alignment = page?.alignment || "center";
-
-  // Extract new theme-based styles
-  const { borderRadius, borderStyle, headingWeight, textWeight, shadow, padding, alignmentClass, imageClasses, primaryColorStyles } = getThemeStyles(
-    theme,
-    alignment,
-    primaryColor
-  );
+  const categories = contents?.filter((item) => item.anchor === true);
 
   useEffect(() => {
-    async function fetchHeader() {
-      try {
-        const res = await fetch(`/api/page/${pageId}`);
-        if (!res.ok) throw new Error("Failed to fetch page header");
-        const data = await res.json();
-        setPageName(data.pageName || "");
-        setBio(data.bio || "");
-        setPageImage(data.pageImage || "");
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    fetchHeader();
-  }, [pageId]);
-
-  useEffect(() => {
+    console.log("PAGE NAME:", pageName, bio, pageImage);
     setPage({ pageName, bio, pageImage });
   }, [pageName, bio, pageImage, setPage]);
+
+  const titleContent = {
+    type: ContentType.PAGE_TITLE,
+    title: pageName,
+  };
+
+  const bioContent = {
+    type: ContentType.PAGE_BIO,
+    description: bio,
+  };
+
+  const imageContent = {
+    type: ContentType.PAGE_AVATAR,
+    image: pageImage,
+  };
+
+  const sections = { ...categories };
 
   // Edit mode (with inputs)
   if (edit) {
     return (
-      <div className='space-y-6'>
+      <div className={`${styles.alignment}`}>
         <div className='space-y-4'>
-          <div className={`flex ${alignmentClass}`}>
-            <ImageUpload value={pageImage} onChange={setPageImage} />
+          <div className={`flex ${styles.alignment}`}>
+            <ImageUploadMulti multiple={false} value={pageImage} onChange={setPageImage} />
           </div>
-          <Input className={`text-2xl ${alignmentClass} border-dashed`} value={pageName} onChange={(e) => setPageName(e.target.value)} placeholder='Page Name (optional)' />
-          <Textarea className={`${alignmentClass} border-dashed`} value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Bio (optional)' rows={3} />
+          <Input className={`text-2xl border-dashed`} value={pageName} onChange={(e) => setPageName(e.target.value)} placeholder='Page Name (optional)' />
+          <Textarea className={`border-dashed`} value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Bio (optional)' rows={3} />
         </div>
-        <SectionsList theme={theme} edit />
+        <SectionsList />
       </div>
     );
   }
 
   // Public View
   return (
-    <div className='space-y-6'>
-      <div className={`space-y-4 ${borderRadius} ${borderStyle} ${shadow} ${padding}`}>
-        {pageImage && (
-          <div className={`flex ${alignmentClass}`}>
-            <div className='overflow-hidden'>
-              <img src={pageImage} alt={pageName} className={imageClasses} />
-            </div>
-          </div>
-        )}
-        {pageName && (
-          <h1 className={`text-2xl ${headingWeight} ${alignmentClass}`} style={primaryColorStyles.title}>
-            {pageName}
-          </h1>
-        )}
-        {bio && <p className={`${textWeight} ${alignmentClass}`}>{bio}</p>}
+    <div className={`${styles.alignment}`}>
+      <div className='space-y-4'>
+        <CoreImageComponent images={imageContent.image} contentType={imageContent.type} themeConfig={themeConfig} />
+        <ContentRenderer content={titleContent} themeConfig={themeConfig} />
+        <ContentRenderer content={bioContent} themeConfig={themeConfig} />
       </div>
-      <SectionsList theme={theme} />
+      <CategoriesListComponent content={sections} themeConfig={themeConfig} />
+      <SectionsList />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Icon } from "@/components/ui/icon";
-import { ContentType } from "@/types/content-type";
+import { ContentType } from "@/types";
 
+// Default icons as components
 export const DEFAULT_ICONS = {
   [ContentType.LINK]: <Icon name='Link' className='h-4 w-4 text-muted-foreground' />,
   [ContentType.IMAGE]: <Icon name='Image' className='h-4 w-4 text-muted-foreground' />,
@@ -8,6 +9,11 @@ export const DEFAULT_ICONS = {
   [ContentType.PRODUCT]: <Icon name='ShoppingCart' className='h-4 w-4 text-muted-foreground' />,
   [ContentType.SOCIAL]: <Icon name='Users' className='h-4 w-4 text-muted-foreground' />,
   [ContentType.BLANK]: <Icon name='BookOpen' className='h-4 w-4 text-muted-foreground' />,
+  [ContentType.PAGE_TITLE]: <Icon name='Layers' className='h-4 w-4 text-muted-foreground' />,
+  [ContentType.PAGE_AVATAR]: <Icon name='User' className='h-4 w-4 text-muted-foreground' />,
+  [ContentType.PAGE_BIO]: <Icon name='User' className='h-4 w-4 text-muted-foreground' />,
+  [ContentType.SOCIAL_LINKS]: <Icon name='LinkIcon' className='h-4 w-4 text-muted-foreground' />,
+  [ContentType.CATEGORIES_LIST]: <Icon name='Layers' className='h-4 w-4 text-muted-foreground' />,
 };
 
 export const CONTENT_TYPES = [

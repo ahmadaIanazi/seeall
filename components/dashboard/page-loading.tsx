@@ -1,24 +1,18 @@
 "use client";
 import { useDashboardStore } from "@/lib/store/dashboard";
+import { useTheme } from "@/lib/store/theme";
+import { ContentType } from "@prisma/client";
 import { useEffect } from "react";
 
-export function PageLoading({ pageId }: { pageId: string }) {
-  const { setPage } = useDashboardStore();
+export function PageLoading({ page }: { page: Partial<ContentType> }) {
+  const { setPage, setPageId } = useDashboardStore();
+  const { setTheme } = useTheme();
 
   useEffect(() => {
-    async function fetchHeader() {
-      try {
-        const res = await fetch(`/api/page/${pageId}`);
-        if (!res.ok) throw new Error("Failed to fetch page header");
-        const data = await res.json();
-        console.log("~FETCHED PAGE:", data);
-        setPage(data);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    fetchHeader();
-  }, [pageId, setPage]);
+    setPage(page);
+    setPageId(page?.id || "");
+    setTheme({ theme: page.style, alignment: page.alignment, primaryColor: page.primaryColor });
+  }, [page, setPage]);
 
   return null;
 }

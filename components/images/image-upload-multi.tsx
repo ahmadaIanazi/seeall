@@ -12,45 +12,53 @@ interface ImageData {
   src: string;
 }
 
-export function ImageUploadMulti() {
-  const [images, setImages] = useState<ImageData[]>([]);
-  const [modal, setModal] = useState<CropModalState>(getDefaultModalState());
+interface ImageUploadMultiProps {
+  multiple?: boolean;
+  value: ImageData[];
+  onChange: (images: ImageData[]) => void;
+}
 
+export function ImageUploadMulti({ multiple = false, value, onChange }: ImageUploadMultiProps) {
+  const [modal, setModal] = useState<CropModalState>(getDefaultModalState());
   const imageRef = useRef<HTMLImageElement | null>(null);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (files) => handleDrop(files, setImages),
+    onDrop: (files) => handleDrop(files, onChange, multiple),
+    multiple,
   });
 
   return (
     <div className='space-y-4'>
-      <DropzoneArea getRootProps={getRootProps} getInputProps={getInputProps} isDragActive={isDragActive} />
-      <ImageGallery images={images} openCropper={(i) => openCropper(i, images, setModal)} removeImage={(i) => removeImage(i, setImages)} />
-      <CropperModalMulti modal={modal} setModal={setModal} imageRef={imageRef} setImages={setImages} />
+      {!multiple && value.length > 0 ? null : <DropzoneArea getRootProps={getRootProps} getInputProps={getInputProps} isDragActive={isDragActive} />}
+      <ImageGallery multiple={multiple} images={value} openCropper={(i) => openCropper(i, value, setModal)} removeImage={(i) => removeImage(i, onChange, value, multiple)} />
+      <CropperModalMulti multiple={multiple} modal={modal} setModal={setModal} imageRef={imageRef} setImages={onChange} />
     </div>
   );
 }
 
 // ========================= HANDLERS =========================
 
-async function handleDrop(acceptedFiles: File[], setImages: React.Dispatch<React.SetStateAction<ImageData[]>>) {
-  const newImages: ImageData[] = [];
-  for (const file of acceptedFiles) {
-    const compressedFile = await imageCompression(file, {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1920,
-      useWebWorker: true,
-    });
+async function handleDrop(acceptedFiles: File[], onChange: (images: ImageData[]) => void, multiple: boolean) {
+  const newImages = await Promise.all(
+    acceptedFiles.map(async (file) => {
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
+      return new Promise<ImageData>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            resolve({ id: crypto.randomUUID(), src: reader.result.toString() });
+          }
+        };
+        reader.readAsDataURL(compressedFile);
+      });
+    })
+  );
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result) {
-        newImages.push({ id: crypto.randomUUID(), src: reader.result.toString() });
-        setImages((prev) => [...prev, ...newImages]);
-      }
-    };
-    reader.readAsDataURL(compressedFile);
-  }
+  onChange(multiple ? (prev) => [...prev, ...newImages] : newImages);
 }
 
 function openCropper(index: number, images: ImageData[], setModal: React.Dispatch<React.SetStateAction<CropModalState>>) {
@@ -63,39 +71,35 @@ function openCropper(index: number, images: ImageData[], setModal: React.Dispatc
   });
 }
 
-function removeImage(index: number, setImages: React.Dispatch<React.SetStateAction<ImageData[]>>) {
-  setImages((prev) => prev.filter((_, i) => i !== index));
+function removeImage(index: number, onChange: (images: ImageData[]) => void, images: ImageData[], multiple: boolean) {
+  onChange(multiple ? images.filter((_, i) => i !== index) : []);
 }
 
 // ========================= COMPONENTS =========================
 
 function DropzoneArea({ getRootProps, getInputProps, isDragActive }) {
   return (
-    <div
-      {...getRootProps({
-        className: "flex h-32 w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed p-4 transition hover:border-primary",
-      })}
-    >
+    <div {...getRootProps({ className: "flex h-32 w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed p-4 transition hover:border-primary" })}>
       <input {...getInputProps()} />
       {isDragActive ? (
-        <p className='text-sm'>Drop the files here...</p>
+        <p className='text-sm'>Drop the file here...</p>
       ) : (
         <div className='flex flex-col items-center'>
           <ImagePlus className='mb-2 h-6 w-6 text-muted-foreground' />
-          <p className='text-sm text-muted-foreground'>Drag & drop or click to select files</p>
+          <p className='text-sm text-muted-foreground'>Drag & drop or click to select a file</p>
         </div>
       )}
     </div>
   );
 }
 
-function ImageGallery({ images, openCropper, removeImage }) {
+function ImageGallery({ multiple, images, openCropper, removeImage }) {
   return (
     images.length > 0 && (
-      <div className='grid grid-cols-3 gap-4'>
+      <div className={`flex ${multiple ? "flex-wrap gap-4" : "justify-center"} `}>
         {images.map((img, i) => (
-          <div key={img.id} className='relative group overflow-hidden rounded-md border'>
-            <img src={img.src} alt={`Preview ${i}`} className='h-full w-full object-cover' />
+          <div key={img.id} className='relative group overflow-hidden rounded-md border' style={{ maxWidth: "100%" }}>
+            <img src={img.src} alt={`Preview ${i}`} className='object-contain' style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "250px" }} />
             <button
               className='absolute top-1 right-1 hidden rounded-full bg-black/50 p-1 text-white opacity-0 transition group-hover:block group-hover:opacity-100'
               onClick={() => removeImage(i)}
@@ -103,7 +107,9 @@ function ImageGallery({ images, openCropper, removeImage }) {
               <X className='h-4 w-4' />
             </button>
             <button
-              className='absolute top-1 left-1 hidden rounded-full bg-black/50 p-1 text-white opacity-0 transition group-hover:block group-hover:opacity-100'
+              className={`absolute top-1 left-1 hidden rounded-full bg-black/50 p-1 text-white opacity-0 transition group-hover:block group-hover:opacity-100 ${
+                !multiple ? "hidden" : ""
+              }`}
               onClick={() => openCropper(i)}
             >
               <CropIcon className='h-4 w-4' />

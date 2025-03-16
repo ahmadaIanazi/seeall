@@ -22,14 +22,14 @@ export default async function DashboardPage() {
 
   return (
     <div className='flex min-h-screen flex-col'>
-      <PageLoading pageId={page.id} />
+      <PageLoading page={page} />
       <PageToolbar pageId={page.id} />
       <main className='flex-1 container py-8 px-4 space-y-4 sm:px-8'>
         <div className='flex items-center gap-2'>
           <span className='text-xs text-muted-foreground'>seeall.info/</span>
           <span className='text-xs font-medium'>{session.user.username}</span>
         </div>
-        <PageHeaderManager pageId={page.id} />
+        <PageHeaderManager page={page} />
         <PageContentManager pageId={page.id} />
         <PageFooterManager pageId={page.id} />
       </main>

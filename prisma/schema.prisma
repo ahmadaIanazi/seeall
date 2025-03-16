@@ -17,6 +17,11 @@ enum ContentType {
   PRODUCT
   SOCIAL
   BLANK
+  PAGE_TITLE
+  PAGE_AVATAR
+  PAGE_BIO
+  SOCIAL_LINKS
+  CATEGORIES_LIST
 }
 
 enum PaymentStatus {
@@ -60,8 +65,9 @@ model Page {
   language          String       @default("en")
   multipleLanguage  Boolean      @default(false)
   live              Boolean      @default(true)
-  pageImage         String?
+  pageImage         Json?
   pageName          String?
+  socialLinks       Json?
   style             String?
   featuredContentIds String[]
   showCategories    Boolean      @default(true)
@@ -86,7 +92,7 @@ model Content {
   type             ContentType
   title            String?
   url              String?
-  image            String?
+  image            Json?
   icon             String?
   description      String?
   name             String?
