@@ -5,6 +5,7 @@ export enum ContentType {
   CATEGORY = "CATEGORY",
   PRODUCT = "PRODUCT",
   SOCIAL = "SOCIAL",
+  BUTTON = "BUTTON",
   BLANK = "BLANK",
   PAGE_TITLE = "PAGE_TITLE",
   PAGE_AVATAR = "PAGE_AVATAR",
