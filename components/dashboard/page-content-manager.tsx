@@ -1,17 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useDashboardStore } from "@/lib/store/dashboard";
+import { ContentType } from "@/types/content-type";
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Plus } from "lucide-react";
 import { Content } from "@prisma/client";
-import { useDashboardStore } from "@/lib/store/dashboard";
-import { ContentTypeSelector } from "./content-type-selector";
-import { ContentType } from "@/types/content-type";
+import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ContentForm } from "./content-form";
 import { ContentSortableItem } from "./content-sortable-items";
+import { ContentTypeSelector } from "./content-type-selector";
 
 export function PageContentManager({ pageId }: { pageId: string }) {
   const { contents, setContents, edit, addContent, removeContent, reorderContents, currentContent, setCurrentContent, updateContent, toggleContentVisibility } =
@@ -155,27 +154,31 @@ export function PageContentManager({ pageId }: { pageId: string }) {
         </SortableContext>
       </DndContext>
 
-      <Dialog open={isAddingContent} onOpenChange={setIsAddingContent}>
-        <DialogTrigger asChild>
+      <Sheet open={isAddingContent} onOpenChange={setIsAddingContent}>
+        <SheetTrigger asChild>
           {edit && (
             <Button className='w-full' variant='outline'>
               <Plus className='mr-2 h-4 w-4' />
               Add New
             </Button>
           )}
-        </DialogTrigger>
-        <DialogContent>
-          <DialogTitle>Choose Content Type</DialogTitle>
-          <ContentTypeSelector
-            onSelect={(type) => {
-              setSelectedType(type);
-              setIsAddingContent(false);
-              setShowForm(true);
-            }}
-            onClose={() => setIsAddingContent(false)}
-          />
-        </DialogContent>
-      </Dialog>
+        </SheetTrigger>
+        <SheetContent side='bottom' className='max-h-[80vh]'>
+          <SheetHeader>
+            <SheetTitle>Choose Content Type</SheetTitle>
+          </SheetHeader>
+          <div className='overflow-y-auto max-h-[calc(80vh-80px)] pb-6'>
+            <ContentTypeSelector
+              onSelect={(type) => {
+                setSelectedType(type);
+                setIsAddingContent(false);
+                setShowForm(true);
+              }}
+              onClose={() => setIsAddingContent(false)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent side='bottom'>

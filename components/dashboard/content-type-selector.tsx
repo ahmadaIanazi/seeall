@@ -11,7 +11,7 @@ interface ContentTypeSelectorProps {
 
 export function ContentTypeSelector({ onSelect, onClose }: ContentTypeSelectorProps) {
   return (
-    <Card className='p-4 grid grid-cols-1 sm:grid-cols-2 gap-4'>
+    <div className='p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 border-0'>
       {CONTENT_TYPES.map((type) => (
         <Button
           key={type.id}
@@ -27,6 +27,6 @@ export function ContentTypeSelector({ onSelect, onClose }: ContentTypeSelectorPr
           <div className='text-xs text-muted-foreground text-center'>{type.description}</div>
         </Button>
       ))}
-    </Card>
+    </div>
   );
 }
